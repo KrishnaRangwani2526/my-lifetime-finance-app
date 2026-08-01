@@ -58,10 +58,13 @@ export function useRealtimeLedger() {
   }, [user, qc]);
 }
 
-function useOwnedQuery<T>(table: LedgerTable, order: { column: string; asc: boolean }) {
+function useOwnedQuery<T>(
+  table: Exclude<LedgerTable, "profiles">,
+  order: { column: string; asc: boolean },
+) {
   const { scopeUserId } = useAuth();
   return useQuery({
-    queryKey: [table, scopeUserId],
+
     enabled: !!scopeUserId,
     queryFn: async () => {
       const { data, error } = await supabase
