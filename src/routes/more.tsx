@@ -7,6 +7,7 @@ import {
   LogOut,
   PiggyBank,
   Settings,
+  ShieldCheck,
   Tags,
   Zap,
   type LucideIcon,
@@ -14,7 +15,9 @@ import {
 import { RequireAuth } from "@/components/RequireAuth";
 import { MobileScreen, ScreenHeader } from "@/components/AppShell";
 import { useAuth } from "@/hooks/useAuth";
+import { emailToPhone } from "@/lib/phone";
 import { useProfile } from "@/hooks/useLedger";
+
 
 export const Route = createFileRoute("/more")({
   head: () => ({
