@@ -64,8 +64,9 @@ function useOwnedQuery<T>(
 ) {
   const { scopeUserId } = useAuth();
   return useQuery({
-
+    queryKey: [table, scopeUserId],
     enabled: !!scopeUserId,
+
     queryFn: async () => {
       const { data, error } = await supabase
         .from(table)
