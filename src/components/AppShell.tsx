@@ -61,6 +61,30 @@ function NavItem({ tab, active }: { tab: Tab; active: boolean }) {
   );
 }
 
+/** Shows while an admin is working inside another user's ledger. */
+export function ScopeBanner() {
+  const { scope, setScope } = useAuth();
+  const qc = useQueryClient();
+  if (!scope) return null;
+  return (
+    <div className="sticky top-0 z-30 flex items-center gap-2 bg-primary px-4 py-2 text-primary-foreground">
+      <Eye className="size-4 shrink-0" />
+      <p className="min-w-0 flex-1 truncate text-xs font-medium">
+        Admin view — editing {scope.label}&apos;s ledger
+      </p>
+      <button
+        onClick={() => {
+          setScope(null);
+          void qc.invalidateQueries();
+        }}
+        className="rounded-full bg-primary-foreground/15 px-3 py-1 text-xs font-semibold"
+      >
+        Exit
+      </button>
+    </div>
+  );
+}
+
 export function MobileScreen({
   children,
   className,
@@ -70,11 +94,13 @@ export function MobileScreen({
 }) {
   return (
     <div className="min-h-dvh bg-background">
+      <ScopeBanner />
       <main className={cn("mx-auto w-full max-w-lg px-4 pb-32 pt-5", className)}>{children}</main>
       <BottomNav />
     </div>
   );
 }
+
 
 export function ScreenHeader({
   title,

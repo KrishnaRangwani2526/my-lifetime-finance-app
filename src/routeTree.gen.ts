@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountsRouteImport } from './routes/accounts'
 import { Route as AddRouteImport } from './routes/add'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CardsRouteImport } from './routes/cards'
 import { Route as CategoriesRouteImport } from './routes/categories'
@@ -38,6 +39,11 @@ const AccountsRoute = AccountsRouteImport.update({
 const AddRoute = AddRouteImport.update({
   id: '/add',
   path: '/add',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -105,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/accounts': typeof AccountsRoute
   '/add': typeof AddRoute
+  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/cards': typeof CardsRoute
   '/categories': typeof CategoriesRoute
@@ -122,6 +129,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/accounts': typeof AccountsRoute
   '/add': typeof AddRoute
+  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/cards': typeof CardsRoute
   '/categories': typeof CategoriesRoute
@@ -140,6 +148,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/accounts': typeof AccountsRoute
   '/add': typeof AddRoute
+  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/cards': typeof CardsRoute
   '/categories': typeof CategoriesRoute
@@ -159,6 +168,7 @@ export interface FileRouteTypes {
     | '/'
     | '/accounts'
     | '/add'
+    | '/admin'
     | '/auth'
     | '/cards'
     | '/categories'
@@ -176,6 +186,7 @@ export interface FileRouteTypes {
     | '/'
     | '/accounts'
     | '/add'
+    | '/admin'
     | '/auth'
     | '/cards'
     | '/categories'
@@ -193,6 +204,7 @@ export interface FileRouteTypes {
     | '/'
     | '/accounts'
     | '/add'
+    | '/admin'
     | '/auth'
     | '/cards'
     | '/categories'
@@ -211,6 +223,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountsRoute: typeof AccountsRoute
   AddRoute: typeof AddRoute
+  AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
   CardsRoute: typeof CardsRoute
   CategoriesRoute: typeof CategoriesRoute
@@ -246,6 +259,13 @@ declare module '@tanstack/react-router' {
       path: '/add'
       fullPath: '/add'
       preLoaderRoute: typeof AddRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -339,6 +359,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountsRoute: AccountsRoute,
   AddRoute: AddRoute,
+  AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
   CardsRoute: CardsRoute,
   CategoriesRoute: CategoriesRoute,
