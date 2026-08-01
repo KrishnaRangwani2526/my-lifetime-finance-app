@@ -1,0 +1,14 @@
+{
+  "name": "MyLedger — Personal Finance",
+  "short_name": "MyLedger",
+  "description": "Track accounts, cards, EMIs and daily spending with instant sync.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#141a22",
+  "theme_color": "#141a22",
+  "icons": [
+    { "src": "/app-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/app-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
