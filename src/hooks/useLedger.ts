@@ -58,15 +58,20 @@ export function useRealtimeLedger() {
   }, [user, qc]);
 }
 
-function useOwnedQuery<T>(table: LedgerTable, order: { column: string; asc: boolean }) {
-  const { user } = useAuth();
+function useOwnedQuery<T>(
+  table: Exclude<LedgerTable, "profiles">,
+  order: { column: string; asc: boolean },
+) {
+  const { scopeUserId } = useAuth();
   return useQuery({
-    queryKey: [table, user?.id],
-    enabled: !!user,
+    queryKey: [table, scopeUserId],
+    enabled: !!scopeUserId,
+
     queryFn: async () => {
       const { data, error } = await supabase
         .from(table)
         .select("*")
+        .eq("user_id", scopeUserId!)
         .order(order.column, { ascending: order.asc });
       if (error) throw error;
       return (data ?? []) as T[];
@@ -89,25 +94,29 @@ export const useTemplates = () =>
   useOwnedQuery<Template>("quick_entry_templates", { column: "name", asc: true });
 
 export function useProfile() {
-  const { user } = useAuth();
+  const { scopeUserId } = useAuth();
   return useQuery({
-    queryKey: ["profiles", user?.id],
-    enabled: !!user,
+    queryKey: ["profiles", scopeUserId],
+    enabled: !!scopeUserId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("*").maybeSingle();
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", scopeUserId!)
+        .maybeSingle();
       if (error) throw error;
       return data as Profile | null;
     },
   });
 }
 
-/** Generic owned-row writer: stamps user_id and invalidates on success. */
+/** Generic owned-row writer: stamps the ledger owner and invalidates on success. */
 export function useSaveRow<T extends Record<string, unknown>>(table: LedgerTable) {
-  const { user } = useAuth();
+  const { scopeUserId } = useAuth();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, values }: { id?: string; values: T }) => {
-      if (!user) throw new Error("Not signed in");
+      if (!scopeUserId) throw new Error("Not signed in");
       // Column shapes differ per table; the caller owns the field contract.
       const writer = supabase.from(table) as unknown as {
         update: (v: unknown) => { eq: (c: string, v: string) => Promise<{ error: unknown }> };
@@ -115,7 +124,7 @@ export function useSaveRow<T extends Record<string, unknown>>(table: LedgerTable
       };
       const { error } = id
         ? await writer.update(values).eq("id", id)
-        : await writer.insert({ ...values, user_id: user.id });
+        : await writer.insert({ ...values, user_id: scopeUserId });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -124,6 +133,7 @@ export function useSaveRow<T extends Record<string, unknown>>(table: LedgerTable
     },
   });
 }
+
 
 export function useDeleteRow(table: LedgerTable) {
   const qc = useQueryClient();

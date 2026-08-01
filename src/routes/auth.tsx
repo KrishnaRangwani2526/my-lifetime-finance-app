@@ -1,10 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Loader2, ShieldCheck, Wallet } from "lucide-react";
+import { Loader2, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { useAuth } from "@/hooks/useAuth";
+import { isValidPhone, normalizePhone, phoneToEmail } from "@/lib/phone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,13 +15,17 @@ export const Route = createFileRoute("/auth")({
       { title: "Sign in — MyLedger" },
       {
         name: "description",
-        content: "Sign in to MyLedger to track your accounts, cards, EMIs and spending.",
+        content:
+          "Sign in to MyLedger with your mobile number to track accounts, cards, EMIs and spending.",
       },
       { property: "og:title", content: "Sign in — MyLedger" },
       {
         property: "og:description",
-        content: "Sign in to MyLedger to track your accounts, cards, EMIs and spending.",
+        content:
+          "Sign in to MyLedger with your mobile number to track accounts, cards, EMIs and spending.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: AuthScreen,
@@ -31,11 +35,10 @@ function AuthScreen() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
-  const [sent, setSent] = useState(false);
 
   useEffect(() => {
     if (!loading && user) void navigate({ to: "/", replace: true });
@@ -43,60 +46,40 @@ function AuthScreen() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!isValidPhone(phone)) {
+      toast.error("Enter a valid 10-digit mobile number");
+      return;
+    }
     setBusy(true);
     try {
+      const email = phoneToEmail(phone);
       if (mode === "signup") {
-        const { data, error } = await supabase.auth.signUp({
+        const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: window.location.origin,
-            data: { display_name: name || email.split("@")[0] },
+            data: {
+              phone: normalizePhone(phone),
+              display_name: name || normalizePhone(phone),
+            },
           },
         });
         if (error) throw error;
-        if (!data.session) {
-          setSent(true);
-          toast.success("Check your email to confirm your account.");
-        }
+        toast.success("Account created — you're in.");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Something went wrong");
+      const msg = err instanceof Error ? err.message : "Something went wrong";
+      toast.error(
+        msg.toLowerCase().includes("invalid login")
+          ? "Wrong mobile number or password"
+          : msg,
+      );
     } finally {
       setBusy(false);
     }
-  }
-
-  async function google() {
-    setBusy(true);
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
-    });
-    if (result.error) {
-      setBusy(false);
-      toast.error("Google sign-in failed. Try email instead.");
-      return;
-    }
-    if (result.redirected) return;
-    void navigate({ to: "/", replace: true });
-  }
-
-  async function reset() {
-    if (!email) {
-      toast.error("Enter your email first");
-      return;
-    }
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    toast.success("Password reset link sent.");
   }
 
   return (
@@ -108,117 +91,84 @@ function AuthScreen() {
           </span>
           <h1 className="font-display text-3xl font-semibold">MyLedger</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Your accounts, cards, EMIs and daily spending — synced live.
+            Sign in with your mobile number — accounts, cards, EMIs and spending, synced live.
           </p>
         </div>
 
-        {sent ? (
-          <div className="surface-card space-y-3 p-6 text-center">
-            <ShieldCheck className="mx-auto size-8 text-primary" />
-            <p className="font-display text-lg">Confirm your email</p>
-            <p className="text-sm text-muted-foreground">
-              We sent a confirmation link to {email}. Open it on this device to finish setting up.
-            </p>
-            <Button variant="ghost" className="w-full" onClick={() => setSent(false)}>
-              Back
-            </Button>
-          </div>
-        ) : (
-          <form onSubmit={submit} className="surface-card space-y-4 p-6">
-            <div className="grid grid-cols-2 gap-1 rounded-full bg-secondary p-1">
-              {(["signin", "signup"] as const).map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setMode(m)}
-                  className={
-                    "rounded-full py-2 text-sm font-medium transition-colors " +
-                    (mode === m
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground")
-                  }
-                >
-                  {m === "signin" ? "Sign in" : "Create account"}
-                </button>
-              ))}
-            </div>
-
-            {mode === "signup" && (
-              <div className="space-y-1.5">
-                <Label htmlFor="name">Your name</Label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Krishna"
-                  autoComplete="name"
-                />
-              </div>
-            )}
-
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                autoComplete="email"
-                inputMode="email"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                required
-                minLength={6}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                autoComplete={mode === "signup" ? "new-password" : "current-password"}
-              />
-            </div>
-
-            <Button type="submit" className="h-12 w-full rounded-full text-base" disabled={busy}>
-              {busy && <Loader2 className="mr-2 size-4 animate-spin" />}
-              {mode === "signin" ? "Sign in" : "Create account"}
-            </Button>
-
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <span className="h-px flex-1 bg-border" />
-              or
-              <span className="h-px flex-1 bg-border" />
-            </div>
-
-            <Button
-              type="button"
-              variant="secondary"
-              className="h-12 w-full rounded-full text-base"
-              onClick={google}
-              disabled={busy}
-            >
-              Continue with Google
-            </Button>
-
-            {mode === "signin" && (
+        <form onSubmit={submit} className="surface-card space-y-4 p-6">
+          <div className="grid grid-cols-2 gap-1 rounded-full bg-secondary p-1">
+            {(["signin", "signup"] as const).map((m) => (
               <button
+                key={m}
                 type="button"
-                onClick={reset}
-                className="w-full text-center text-xs text-muted-foreground underline-offset-4 hover:underline"
+                onClick={() => setMode(m)}
+                className={
+                  "rounded-full py-2 text-sm font-medium transition-colors " +
+                  (mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground")
+                }
               >
-                Forgot your password?
+                {m === "signin" ? "Sign in" : "Create account"}
               </button>
-            )}
-          </form>
-        )}
+            ))}
+          </div>
+
+          {mode === "signup" && (
+            <div className="space-y-1.5">
+              <Label htmlFor="name">Your name</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Krishna"
+                autoComplete="name"
+                maxLength={60}
+              />
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <Label htmlFor="phone">Mobile number</Label>
+            <div className="flex items-center gap-2">
+              <span className="flex h-10 items-center rounded-md border border-border px-3 text-sm text-muted-foreground">
+                +91
+              </span>
+              <Input
+                id="phone"
+                type="tel"
+                required
+                value={phone}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                placeholder="9928452506"
+                autoComplete="tel"
+                inputMode="numeric"
+                maxLength={10}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              required
+              minLength={6}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              autoComplete={mode === "signup" ? "new-password" : "current-password"}
+              maxLength={72}
+            />
+          </div>
+
+          <Button type="submit" className="h-12 w-full rounded-full text-base" disabled={busy}>
+            {busy && <Loader2 className="mr-2 size-4 animate-spin" />}
+            {mode === "signin" ? "Sign in" : "Create account"}
+          </Button>
+        </form>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          Private by design — only you can see your ledger.
+          Private by design — only you (and your admin) can see your ledger.
         </p>
       </div>
     </div>
