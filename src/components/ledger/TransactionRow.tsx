@@ -10,8 +10,8 @@ export function TransactionRow({
   currency,
 }: {
   txn: Transaction;
-  categoryName?: string;
-  sourceName?: string;
+  categoryName?: string | undefined;
+  sourceName?: string | undefined;
   currency: string;
 }) {
   const credit = txn.direction === "credit";
