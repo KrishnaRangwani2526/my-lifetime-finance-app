@@ -9,13 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 export const Route = createFileRoute("/categories")({
   head: () => ({
@@ -45,7 +38,7 @@ function Categories() {
   const remove = useDeleteRow("categories");
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
-  const [kind, setKind] = useState("expense");
+  const [icon, setIcon] = useState("🏷️");
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -54,7 +47,7 @@ function Categories() {
       return;
     }
     try {
-      await save.mutateAsync({ values: { name: name.trim(), kind } });
+      await save.mutateAsync({ values: { name: name.trim(), icon, is_custom: true } });
       toast.success("Category added");
       setName("");
       setOpen(false);
@@ -91,16 +84,13 @@ function Categories() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Kind</Label>
-                  <Select value={kind} onValueChange={setKind}>
-                    <SelectTrigger className="h-12">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="expense">Expense</SelectItem>
-                      <SelectItem value="income">Income</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="cat-icon">Emoji</Label>
+                  <Input
+                    id="cat-icon"
+                    value={icon}
+                    onChange={(e) => setIcon(e.target.value.slice(0, 2))}
+                    className="h-12 text-center text-xl"
+                  />
                 </div>
                 <Button type="submit" className="w-full rounded-full" disabled={save.isPending}>
                   {save.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
@@ -122,9 +112,14 @@ function Categories() {
         <div className="surface-card divide-y divide-border overflow-hidden">
           {categories.map((c) => (
             <div key={c.id} className="flex items-center gap-3 px-4 py-3.5">
+              <span className="flex size-9 items-center justify-center rounded-xl bg-secondary text-base">
+                {c.icon ?? "🏷️"}
+              </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{c.name}</p>
-                <p className="text-xs capitalize text-muted-foreground">{c.kind}</p>
+                <p className="text-xs text-muted-foreground">
+                  {c.is_custom ? "Custom" : "Default"}
+                </p>
               </div>
               <button
                 onClick={() => {
