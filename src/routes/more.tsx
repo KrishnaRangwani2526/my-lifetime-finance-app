@@ -50,7 +50,7 @@ const LINKS: { to: string; label: string; hint: string; icon: LucideIcon }[] = [
 
 function More() {
   const { data: profile } = useProfile();
-  const { user, signOut } = useAuth();
+  const { user, signOut, isAdmin } = useAuth();
 
   return (
     <MobileScreen>
@@ -58,13 +58,32 @@ function More() {
 
       <div className="surface-card mb-4 flex items-center gap-3 p-4">
         <span className="flex size-11 items-center justify-center rounded-full bg-primary/15 font-display text-lg font-semibold text-primary">
-          {(profile?.display_name ?? user?.email ?? "?").charAt(0).toUpperCase()}
+          {(profile?.display_name ?? profile?.phone ?? "?").charAt(0).toUpperCase()}
         </span>
         <div className="min-w-0">
           <p className="truncate font-medium">{profile?.display_name ?? "Your profile"}</p>
-          <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
+          <p className="truncate text-xs text-muted-foreground">
+            {profile?.phone ? `+91 ${profile.phone}` : emailToPhone(user?.email)}
+          </p>
         </div>
       </div>
+
+      {isAdmin && (
+        <Link
+          to="/admin"
+          className="surface-card mb-4 flex items-center gap-3 px-4 py-3.5 transition-colors active:bg-secondary/60"
+        >
+          <span className="flex size-9 items-center justify-center rounded-xl bg-primary/15 text-primary">
+            <ShieldCheck className="size-4.5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium">Admin console</p>
+            <p className="text-xs text-muted-foreground">View and edit every user</p>
+          </div>
+          <ChevronRight className="size-4 text-muted-foreground" />
+        </Link>
+      )}
+
 
       <div className="surface-card divide-y divide-border overflow-hidden">
         {LINKS.map(({ to, label, hint, icon: Icon }) => (

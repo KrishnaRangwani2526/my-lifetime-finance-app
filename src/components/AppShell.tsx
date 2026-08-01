@@ -1,5 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import {
+  Eye,
   LayoutDashboard,
   ListOrdered,
   Plus,
@@ -8,7 +10,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+
 
 type Tab = { to: string; label: string; icon: LucideIcon };
 
