@@ -74,6 +74,14 @@ export function monthLabel(iso: string): string {
   });
 }
 
+/** Accepts "YYYY-MM" and returns e.g. "March 2026". */
+export function formatMonthLabel(yearMonth: string): string {
+  return new Date(`${yearMonth}-01T00:00:00`).toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric",
+  });
+}
+
 /** Signed effect of a transaction on a bank balance. */
 export function signedAmount(t: Pick<Transaction, "amount" | "direction">): number {
   const value = num(t.amount);
