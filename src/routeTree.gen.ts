@@ -15,6 +15,7 @@ import { Route as AddRouteImport } from './routes/add'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CardsRouteImport } from './routes/cards'
 import { Route as CategoriesRouteImport } from './routes/categories'
+import { Route as EmisRouteImport } from './routes/emis'
 import { Route as MoreRouteImport } from './routes/more'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as TransactionsRouteImport } from './routes/transactions'
@@ -49,6 +50,11 @@ const CategoriesRoute = CategoriesRouteImport.update({
   path: '/categories',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EmisRoute = EmisRouteImport.update({
+  id: '/emis',
+  path: '/emis',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MoreRoute = MoreRouteImport.update({
   id: '/more',
   path: '/more',
@@ -72,6 +78,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/cards': typeof CardsRoute
   '/categories': typeof CategoriesRoute
+  '/emis': typeof EmisRoute
   '/more': typeof MoreRoute
   '/reports': typeof ReportsRoute
   '/transactions': typeof TransactionsRoute
@@ -83,6 +90,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/cards': typeof CardsRoute
   '/categories': typeof CategoriesRoute
+  '/emis': typeof EmisRoute
   '/more': typeof MoreRoute
   '/reports': typeof ReportsRoute
   '/transactions': typeof TransactionsRoute
@@ -95,6 +103,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/cards': typeof CardsRoute
   '/categories': typeof CategoriesRoute
+  '/emis': typeof EmisRoute
   '/more': typeof MoreRoute
   '/reports': typeof ReportsRoute
   '/transactions': typeof TransactionsRoute
@@ -108,6 +117,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/cards'
     | '/categories'
+    | '/emis'
     | '/more'
     | '/reports'
     | '/transactions'
@@ -119,6 +129,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/cards'
     | '/categories'
+    | '/emis'
     | '/more'
     | '/reports'
     | '/transactions'
@@ -130,6 +141,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/cards'
     | '/categories'
+    | '/emis'
     | '/more'
     | '/reports'
     | '/transactions'
@@ -142,6 +154,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CardsRoute: typeof CardsRoute
   CategoriesRoute: typeof CategoriesRoute
+  EmisRoute: typeof EmisRoute
   MoreRoute: typeof MoreRoute
   ReportsRoute: typeof ReportsRoute
   TransactionsRoute: typeof TransactionsRoute
@@ -191,6 +204,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CategoriesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/emis': {
+      id: '/emis'
+      path: '/emis'
+      fullPath: '/emis'
+      preLoaderRoute: typeof EmisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/more': {
       id: '/more'
       path: '/more'
@@ -222,6 +242,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CardsRoute: CardsRoute,
   CategoriesRoute: CategoriesRoute,
+  EmisRoute: EmisRoute,
   MoreRoute: MoreRoute,
   ReportsRoute: ReportsRoute,
   TransactionsRoute: TransactionsRoute,
