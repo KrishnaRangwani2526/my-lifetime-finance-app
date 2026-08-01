@@ -19,6 +19,7 @@ import { Route as EmisRouteImport } from './routes/emis'
 import { Route as MoreRouteImport } from './routes/more'
 import { Route as RecurringRouteImport } from './routes/recurring'
 import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as SearchRouteImport } from './routes/search'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TemplatesRouteImport } from './routes/templates'
 import { Route as TransactionsRouteImport } from './routes/transactions'
@@ -73,6 +74,11 @@ const ReportsRoute = ReportsRouteImport.update({
   path: '/reports',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SearchRoute = SearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -100,6 +106,7 @@ export interface FileRoutesByFullPath {
   '/more': typeof MoreRoute
   '/recurring': typeof RecurringRoute
   '/reports': typeof ReportsRoute
+  '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
   '/templates': typeof TemplatesRoute
   '/transactions': typeof TransactionsRoute
@@ -115,6 +122,7 @@ export interface FileRoutesByTo {
   '/more': typeof MoreRoute
   '/recurring': typeof RecurringRoute
   '/reports': typeof ReportsRoute
+  '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
   '/templates': typeof TemplatesRoute
   '/transactions': typeof TransactionsRoute
@@ -131,6 +139,7 @@ export interface FileRoutesById {
   '/more': typeof MoreRoute
   '/recurring': typeof RecurringRoute
   '/reports': typeof ReportsRoute
+  '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
   '/templates': typeof TemplatesRoute
   '/transactions': typeof TransactionsRoute
@@ -148,6 +157,7 @@ export interface FileRouteTypes {
     | '/more'
     | '/recurring'
     | '/reports'
+    | '/search'
     | '/settings'
     | '/templates'
     | '/transactions'
@@ -163,6 +173,7 @@ export interface FileRouteTypes {
     | '/more'
     | '/recurring'
     | '/reports'
+    | '/search'
     | '/settings'
     | '/templates'
     | '/transactions'
@@ -178,6 +189,7 @@ export interface FileRouteTypes {
     | '/more'
     | '/recurring'
     | '/reports'
+    | '/search'
     | '/settings'
     | '/templates'
     | '/transactions'
@@ -194,6 +206,7 @@ export interface RootRouteChildren {
   MoreRoute: typeof MoreRoute
   RecurringRoute: typeof RecurringRoute
   ReportsRoute: typeof ReportsRoute
+  SearchRoute: typeof SearchRoute
   SettingsRoute: typeof SettingsRoute
   TemplatesRoute: typeof TemplatesRoute
   TransactionsRoute: typeof TransactionsRoute
@@ -271,6 +284,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -306,6 +326,7 @@ const rootRouteChildren: RootRouteChildren = {
   MoreRoute: MoreRoute,
   RecurringRoute: RecurringRoute,
   ReportsRoute: ReportsRoute,
+  SearchRoute: SearchRoute,
   SettingsRoute: SettingsRoute,
   TemplatesRoute: TemplatesRoute,
   TransactionsRoute: TransactionsRoute,
