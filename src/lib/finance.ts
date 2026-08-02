@@ -191,3 +191,12 @@ export function advanceDate(iso: string, frequency: string): string {
 export const FREQUENCIES = ["daily", "weekly", "monthly", "yearly"] as const;
 export const ACCOUNT_TYPES = ["bank", "wallet"] as const;
 export const SOURCE_APPS = ["phonepe", "paytm", "gpay", "other"] as const;
+
+/** "12 Aug 2026" — used wherever an exact billing / due date must be shown. */
+export function formatExactDate(iso: string): string {
+  return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
