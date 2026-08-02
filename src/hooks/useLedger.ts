@@ -39,24 +39,30 @@ export function useRealtimeLedger() {
   useEffect(() => {
     if (!user) return;
     const channel = supabase.channel(`ledger:${user.id}`);
+    // Coalesce bursts (bulk imports fire hundreds of events) into one refetch.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const pending = new Set<string>();
+    const flush = () => {
+      for (const table of pending) void qc.invalidateQueries({ queryKey: [table] });
+      pending.clear();
+    };
 
     for (const table of LEDGER_TABLES) {
-      channel.on(
-        "postgres_changes",
-        { event: "*", schema: "public", table },
-        () => {
-          void qc.invalidateQueries({ queryKey: [table] });
-          if (table !== "profiles") void qc.invalidateQueries({ queryKey: ["transactions"] });
-        },
-      );
+      channel.on("postgres_changes", { event: "*", schema: "public", table }, () => {
+        pending.add(table);
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(flush, 350);
+      });
     }
 
     channel.subscribe();
     return () => {
+      if (timer) clearTimeout(timer);
       void supabase.removeChannel(channel);
     };
   }, [user, qc]);
 }
+
 
 function useOwnedQuery<T>(
   table: Exclude<LedgerTable, "profiles">,
@@ -119,14 +125,26 @@ export function useSaveRow<T extends Record<string, unknown>>(table: LedgerTable
       if (!scopeUserId) throw new Error("Not signed in");
       // Column shapes differ per table; the caller owns the field contract.
       const writer = supabase.from(table) as unknown as {
-        update: (v: unknown) => { eq: (c: string, v: string) => Promise<{ error: unknown }> };
-        insert: (v: unknown) => Promise<{ error: unknown }>;
+        update: (v: unknown) => {
+          eq: (c: string, v: string) => {
+            select: (c: string) => {
+              maybeSingle: () => Promise<{ data: { id: string } | null; error: unknown }>;
+            };
+          };
+        };
+        insert: (v: unknown) => {
+          select: (c: string) => {
+            maybeSingle: () => Promise<{ data: { id: string } | null; error: unknown }>;
+          };
+        };
       };
-      const { error } = id
-        ? await writer.update(values).eq("id", id)
-        : await writer.insert({ ...values, user_id: scopeUserId });
+      const { data, error } = id
+        ? await writer.update(values).eq("id", id).select("id").maybeSingle()
+        : await writer.insert({ ...values, user_id: scopeUserId }).select("id").maybeSingle();
       if (error) throw error;
+      return data;
     },
+
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: [table] });
       void qc.invalidateQueries({ queryKey: ["transactions"] });
@@ -144,6 +162,125 @@ export function useDeleteRow(table: LedgerTable) {
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: [table] });
+      void qc.invalidateQueries({ queryKey: ["transactions"] });
+    },
+  });
+}
+
+/* ------------------------------------------------------------- balance resets */
+
+export type BalanceAnchor = {
+  id: string;
+  user_id: string;
+  account_id: string;
+  as_of_date: string;
+  balance_amount: string | number;
+  created_at: string;
+};
+
+/** Every balance reset ever recorded, newest first. */
+export function useAnchors() {
+  const { scopeUserId } = useAuth();
+  return useQuery({
+    queryKey: ["balance_anchors", scopeUserId],
+    enabled: !!scopeUserId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("balance_anchors")
+        .select("*")
+        .eq("user_id", scopeUserId!)
+        .order("as_of_date", { ascending: false })
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as BalanceAnchor[];
+    },
+  });
+}
+
+/** Most recent reset for one account (the point balances are counted from). */
+export function latestAnchor(anchors: BalanceAnchor[], accountId: string) {
+  return anchors.find((a) => a.account_id === accountId) ?? null;
+}
+
+/** Resets an account/wallet balance: later entries are counted from this point. */
+export function useResetBalance() {
+  const { scopeUserId } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      accountId,
+      balance,
+      asOf,
+    }: {
+      accountId: string;
+      balance: number;
+      asOf: string;
+    }) => {
+      if (!scopeUserId) throw new Error("Not signed in");
+      const { error } = await supabase.from("balance_anchors").insert({
+        user_id: scopeUserId,
+        account_id: accountId,
+        balance_amount: balance,
+        as_of_date: asOf,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["balance_anchors"] });
+    },
+  });
+}
+
+/* ------------------------------------------------------ statement bulk import */
+
+export type BulkTxn = {
+  linked_type: string;
+  linked_id: string | null;
+  amount: number;
+  direction: string;
+  txn_date: string;
+  description: string | null;
+  merchant?: string | null;
+  category_id?: string | null;
+  source: string;
+};
+
+/** Inserts many rows in chunks so a long statement never blocks the UI. */
+export function useBulkInsertTransactions() {
+  const { scopeUserId } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (rows: BulkTxn[]) => {
+      if (!scopeUserId) throw new Error("Not signed in");
+      const stamped = rows.map((r) => ({ ...r, user_id: scopeUserId }));
+      for (let i = 0; i < stamped.length; i += 200) {
+        const { error } = await supabase.from("transactions").insert(stamped.slice(i, i + 200));
+        if (error) throw error;
+      }
+      return stamped.length;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["transactions"] });
+    },
+  });
+}
+
+/** Removes every imported statement row for one account/card. */
+export function useClearImported() {
+  const { scopeUserId } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ linkedId }: { linkedId: string }) => {
+      if (!scopeUserId) throw new Error("Not signed in");
+      const { error } = await supabase
+        .from("transactions")
+        .delete()
+        .eq("user_id", scopeUserId)
+        .eq("linked_id", linkedId)
+        .eq("source", "statement");
+      if (error) throw error;
+    },
+    onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["transactions"] });
     },
   });

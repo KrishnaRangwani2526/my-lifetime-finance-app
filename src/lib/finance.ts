@@ -115,13 +115,63 @@ export function cardOutstanding(cardId: string, transactions: Transaction[]): nu
     .reduce((sum, t) => sum + (t.direction === "debit" ? num(t.amount) : -num(t.amount)), 0);
 }
 
-export function nextDueDate(dayOfMonth: number): string {
-  const now = new Date();
-  const day = Math.min(Math.max(dayOfMonth, 1), 28);
-  const candidate = new Date(now.getFullYear(), now.getMonth(), day);
-  if (candidate < now) candidate.setMonth(candidate.getMonth() + 1);
-  return candidate.toISOString().slice(0, 10);
+/** Days in a given month (1-indexed month). */
+function daysInMonth(year: number, month: number): number {
+  return new Date(year, month + 1, 0).getDate();
 }
+
+/**
+ * Next calendar occurrence of a day-of-month, clamped to the month length.
+ * `from` lets us chain (e.g. the due date that follows a billing date).
+ */
+export function nextOnDay(dayOfMonth: number, from: Date = new Date()): string {
+  const day = Math.min(Math.max(Math.round(dayOfMonth) || 1, 1), 31);
+  const base = new Date(from.getFullYear(), from.getMonth(), 1);
+  for (let i = 0; i < 3; i++) {
+    const y = base.getFullYear();
+    const m = base.getMonth() + i;
+    const d = new Date(y, m, 1);
+    const clamped = Math.min(day, daysInMonth(d.getFullYear(), d.getMonth()));
+    const candidate = new Date(d.getFullYear(), d.getMonth(), clamped);
+    if (candidate >= new Date(from.getFullYear(), from.getMonth(), from.getDate()))
+      return candidate.toISOString().slice(0, 10);
+  }
+  return todayISO();
+}
+
+export function nextDueDate(dayOfMonth: number): string {
+  return nextOnDay(dayOfMonth);
+}
+
+/** Exact upcoming statement (billing) date and the payment due date that follows it. */
+export function cardCycle(billingDay: number, dueDay: number) {
+  const billing = nextOnDay(billingDay);
+  const billingDate = new Date(`${billing}T00:00:00`);
+  // The due day belongs to the cycle that closes on the billing date, so it is
+  // the first occurrence of the due day on/after that billing date.
+  const due = nextOnDay(dueDay, billingDate);
+  return { billing, due };
+}
+
+/** Next instalment date for an EMI: start date advanced by instalments already paid. */
+export function emiNextDate(emi: {
+  start_date: string;
+  installments_paid: number;
+  total_installments: number;
+}): string | null {
+  if (emi.installments_paid >= emi.total_installments) return null;
+  const d = new Date(`${emi.start_date}T00:00:00`);
+  const day = d.getDate();
+  const target = new Date(d.getFullYear(), d.getMonth() + emi.installments_paid, 1);
+  target.setDate(Math.min(day, daysInMonth(target.getFullYear(), target.getMonth())));
+  return target.toISOString().slice(0, 10);
+}
+
+/** "2026-08" for any ISO date. */
+export function monthKey(iso: string): string {
+  return iso.slice(0, 7);
+}
+
 
 export function daysUntil(iso: string): number {
   const target = new Date(`${iso}T00:00:00`).getTime();
@@ -141,3 +191,12 @@ export function advanceDate(iso: string, frequency: string): string {
 export const FREQUENCIES = ["daily", "weekly", "monthly", "yearly"] as const;
 export const ACCOUNT_TYPES = ["bank", "wallet"] as const;
 export const SOURCE_APPS = ["phonepe", "paytm", "gpay", "other"] as const;
+
+/** "12 Aug 2026" — used wherever an exact billing / due date must be shown. */
+export function formatExactDate(iso: string): string {
+  return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
