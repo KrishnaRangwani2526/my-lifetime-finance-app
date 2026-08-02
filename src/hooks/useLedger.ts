@@ -125,14 +125,26 @@ export function useSaveRow<T extends Record<string, unknown>>(table: LedgerTable
       if (!scopeUserId) throw new Error("Not signed in");
       // Column shapes differ per table; the caller owns the field contract.
       const writer = supabase.from(table) as unknown as {
-        update: (v: unknown) => { eq: (c: string, v: string) => Promise<{ error: unknown }> };
-        insert: (v: unknown) => Promise<{ error: unknown }>;
+        update: (v: unknown) => {
+          eq: (c: string, v: string) => {
+            select: (c: string) => {
+              maybeSingle: () => Promise<{ data: { id: string } | null; error: unknown }>;
+            };
+          };
+        };
+        insert: (v: unknown) => {
+          select: (c: string) => {
+            maybeSingle: () => Promise<{ data: { id: string } | null; error: unknown }>;
+          };
+        };
       };
-      const { error } = id
-        ? await writer.update(values).eq("id", id)
-        : await writer.insert({ ...values, user_id: scopeUserId });
+      const { data, error } = id
+        ? await writer.update(values).eq("id", id).select("id").maybeSingle()
+        : await writer.insert({ ...values, user_id: scopeUserId }).select("id").maybeSingle();
       if (error) throw error;
+      return data;
     },
+
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: [table] });
       void qc.invalidateQueries({ queryKey: ["transactions"] });
