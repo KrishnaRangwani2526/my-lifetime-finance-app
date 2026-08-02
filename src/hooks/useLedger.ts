@@ -39,24 +39,30 @@ export function useRealtimeLedger() {
   useEffect(() => {
     if (!user) return;
     const channel = supabase.channel(`ledger:${user.id}`);
+    // Coalesce bursts (bulk imports fire hundreds of events) into one refetch.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const pending = new Set<string>();
+    const flush = () => {
+      for (const table of pending) void qc.invalidateQueries({ queryKey: [table] });
+      pending.clear();
+    };
 
     for (const table of LEDGER_TABLES) {
-      channel.on(
-        "postgres_changes",
-        { event: "*", schema: "public", table },
-        () => {
-          void qc.invalidateQueries({ queryKey: [table] });
-          if (table !== "profiles") void qc.invalidateQueries({ queryKey: ["transactions"] });
-        },
-      );
+      channel.on("postgres_changes", { event: "*", schema: "public", table }, () => {
+        pending.add(table);
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(flush, 350);
+      });
     }
 
     channel.subscribe();
     return () => {
+      if (timer) clearTimeout(timer);
       void supabase.removeChannel(channel);
     };
   }, [user, qc]);
 }
+
 
 function useOwnedQuery<T>(
   table: Exclude<LedgerTable, "profiles">,
