@@ -109,7 +109,7 @@ export function accountBalance(
       (t) =>
         t.linked_type === "account" &&
         t.linked_id === accountId &&
-        (!anchor || t.txn_date > anchor.as_of_date),
+        (!anchor || t.txn_date >= anchor.as_of_date),
     )
     .reduce((sum, t) => sum + signedAmount(t), base);
 }
