@@ -9,6 +9,7 @@ import {
   useTransactions,
 } from "@/hooks/useLedger";
 import { accountBalance, formatExactDate, formatMoney } from "@/lib/finance";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/accounts/$accountId")({
   head: () => ({
@@ -66,7 +67,7 @@ function AccountDetail() {
           <p className="text-xs text-muted-foreground">
             {isWallet ? "Wallet balance" : "Account balance"}
           </p>
-          <p className="numeric font-display text-3xl font-semibold">
+          <p className={cn("numeric font-display text-3xl font-semibold", balance < 0 && "text-debit")}>
             {formatMoney(balance, currency)}
           </p>
           <p className="mt-1 text-[11px] text-muted-foreground">

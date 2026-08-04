@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCategories, useSaveRow, useTemplates } from "@/hooks/useLedger";
-import { formatMoney, num, todayISO } from "@/lib/finance";
+import { formatMoney, num, todayISO, weekdayName } from "@/lib/finance";
 import { cn } from "@/lib/utils";
 
 /**
@@ -45,6 +45,7 @@ export function QuickEntrySheet({
   const [amount, setAmount] = useState("");
   const [direction, setDirection] = useState<"debit" | "credit">("debit");
   const [categoryId, setCategoryId] = useState("");
+  const [date, setDate] = useState(todayISO());
 
   const { data: templates = [] } = useTemplates();
   const { data: categories = [] } = useCategories();
@@ -62,7 +63,7 @@ export function QuickEntrySheet({
         linked_id: linkedId,
         amount: num(tpl.amount),
         direction: tpl.direction,
-        txn_date: todayISO(),
+        txn_date: date,
         category_id: tpl.category_id,
         description: tpl.description ?? tpl.name,
         source: "template",
@@ -98,7 +99,7 @@ export function QuickEntrySheet({
           linked_id: linkedId,
           amount: value,
           direction,
-          txn_date: todayISO(),
+          txn_date: date,
           category_id: categoryId || null,
           description: name.trim(),
           source: "template",
@@ -129,6 +130,17 @@ export function QuickEntrySheet({
         </SheetHeader>
 
         <div className="space-y-3 pt-2">
+          <div className="space-y-1.5">
+            <Label htmlFor={`qe-date-${linkedId}`}>Entry date</Label>
+            <Input
+              id={`qe-date-${linkedId}`}
+              type="date"
+              value={date}
+              onChange={(event) => setDate(event.target.value)}
+              className="h-11"
+            />
+            <p className="text-xs font-medium text-muted-foreground">{weekdayName(date)}</p>
+          </div>
           {mine.length > 0 && (
             <div className="grid grid-cols-2 gap-2">
               {mine.map((tpl) => (

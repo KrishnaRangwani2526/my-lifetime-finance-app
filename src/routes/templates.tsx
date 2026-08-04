@@ -13,7 +13,7 @@ import {
   useSaveRow,
   useTemplates,
 } from "@/hooks/useLedger";
-import { formatMoney, num, todayISO } from "@/lib/finance";
+import { formatMoney, num, todayISO, weekdayName } from "@/lib/finance";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,6 +65,7 @@ function Templates() {
   const [direction, setDirection] = useState("debit");
   const [target, setTarget] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [date, setDate] = useState(todayISO());
 
   const currency = profile?.currency ?? "INR";
   const options = [
@@ -79,7 +80,11 @@ function Templates() {
       toast.error("Add a name and amount");
       return;
     }
-    const [linkedType, linkedId] = (target || "account:").split(":");
+    if (!target) {
+      toast.error("Choose the account, wallet or card for this quick entry");
+      return;
+    }
+    const [linkedType, linkedId] = target.split(":");
     try {
       await save.mutateAsync({
         values: {
@@ -110,7 +115,7 @@ function Templates() {
         linked_id: tpl.linked_id,
         amount: num(tpl.amount),
         direction: tpl.direction,
-        txn_date: todayISO(),
+        txn_date: date,
         category_id: tpl.category_id,
         description: tpl.description ?? tpl.name,
         source: "template",
@@ -171,7 +176,7 @@ function Templates() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Account</Label>
+                  <Label>Linked account, wallet or card</Label>
                   <Select value={target} onValueChange={setTarget}>
                     <SelectTrigger className="h-12">
                       <SelectValue placeholder="Choose account or card" />
@@ -218,6 +223,17 @@ function Templates() {
         />
       ) : (
         <div className="space-y-3">
+          <div className="surface-card p-3">
+            <Label htmlFor="quick-date">Entry date</Label>
+            <Input
+              id="quick-date"
+              type="date"
+              value={date}
+              onChange={(event) => setDate(event.target.value)}
+              className="mt-1.5 h-11"
+            />
+            <p className="mt-1 text-xs font-medium text-muted-foreground">{weekdayName(date)}</p>
+          </div>
           {templates.map((t) => (
             <div key={t.id} className="surface-card flex items-center gap-3 p-4">
               <button

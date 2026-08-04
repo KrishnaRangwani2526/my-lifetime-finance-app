@@ -67,6 +67,12 @@ export function formatDay(iso: string): string {
   });
 }
 
+/** Full weekday for a ledger date, e.g. "Monday". */
+export function weekdayName(iso: string): string {
+  if (!iso) return "";
+  return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { weekday: "long" });
+}
+
 export function monthLabel(iso: string): string {
   return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, {
     month: "short",
@@ -103,7 +109,7 @@ export function accountBalance(
       (t) =>
         t.linked_type === "account" &&
         t.linked_id === accountId &&
-        (!anchor || t.txn_date > anchor.as_of_date),
+        (!anchor || t.txn_date >= anchor.as_of_date),
     )
     .reduce((sum, t) => sum + signedAmount(t), base);
 }

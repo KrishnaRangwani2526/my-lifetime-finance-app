@@ -198,6 +198,7 @@ function Accounts() {
         <div className="space-y-3">
           {list.map((a) => {
             const anchor = latestAnchor(anchors, a.id);
+            const balance = accountBalance(a.id, txns, anchor);
             return (
               <div key={a.id} className="surface-card flex items-center gap-3 p-4">
                 <Link
@@ -219,8 +220,8 @@ function Accounts() {
                       {anchor ? ` · reset ${anchor.as_of_date}` : ""}
                     </p>
                   </div>
-                  <p className="numeric shrink-0 font-display font-semibold">
-                    {formatMoney(accountBalance(a.id, txns, anchor), currency)}
+                  <p className={cn("numeric shrink-0 font-display font-semibold", balance < 0 && "text-debit")}>
+                    {formatMoney(balance, currency)}
                   </p>
                   <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
                 </Link>

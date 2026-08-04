@@ -12,7 +12,7 @@ import {
   useSaveRow,
   useTransactions,
 } from "@/hooks/useLedger";
-import { currencyMeta, num, todayISO, type Direction } from "@/lib/finance";
+import { currencyMeta, num, todayISO, weekdayName, type Direction } from "@/lib/finance";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/add")({
   validateSearch: (search: Record<string, unknown>) => ({
     id: typeof search["id"] === "string" ? search["id"] : undefined,
+    linked: typeof search["linked"] === "string" ? search["linked"] : undefined,
   }),
   head: () => ({
     meta: [
@@ -51,7 +52,7 @@ export const Route = createFileRoute("/add")({
 });
 
 function AddEntry() {
-  const { id } = Route.useSearch();
+  const { id, linked } = Route.useSearch();
   const navigate = useNavigate();
   const { data: profile } = useProfile();
   const { data: accounts = [] } = useAccounts();
@@ -89,10 +90,12 @@ function AddEntry() {
       setDate(existing.txn_date);
       setDescription(existing.description ?? "");
       setMerchant(existing.merchant ?? "");
-    } else if (!target && options[0]) {
-      setTarget(options[0].key);
+    } else if (!target) {
+      const scoped = options.find((option) => option.key === linked);
+      if (scoped) setTarget(scoped.key);
+      else if (options[0]) setTarget(options[0].key);
     }
-  }, [existing, options, target]);
+  }, [existing, linked, options, target]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -245,6 +248,7 @@ function AddEntry() {
               onChange={(e) => setDate(e.target.value)}
               className="h-12"
             />
+            <p className="text-xs font-medium text-muted-foreground">{weekdayName(date)}</p>
           </div>
 
           <div className="space-y-1.5">
