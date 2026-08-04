@@ -1,0 +1,10 @@
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.bank_accounts TO authenticated;
+GRANT ALL ON public.bank_accounts TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.card_accounts TO authenticated;
+GRANT ALL ON public.card_accounts TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.quick_entry_templates TO authenticated;
+GRANT ALL ON public.quick_entry_templates TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.transactions TO authenticated;
+GRANT ALL ON public.transactions TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.balance_anchors TO authenticated;
+GRANT ALL ON public.balance_anchors TO service_role;
