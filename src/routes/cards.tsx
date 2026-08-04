@@ -59,7 +59,7 @@ function Cards() {
         values: {
           name: name.trim(),
           credit_limit: Number(limit) || 0,
-          bill_date: Number(billDate) || 1,
+          billing_date: Number(billDate) || 1,
           due_date: Number(dueDate) || 15,
         },
       });
