@@ -23,7 +23,9 @@ const LEDGER_TABLES = [
   "quick_entry_templates",
   "profiles",
   "balance_anchors",
+  "ledger_periods",
 ] as const;
+
 
 export type LedgerTable = (typeof LEDGER_TABLES)[number];
 
@@ -173,6 +175,7 @@ export type BalanceAnchor = {
   id: string;
   user_id: string;
   account_id: string;
+  linked_type: string;
   as_of_date: string;
   balance_amount: string | number;
   created_at: string;
@@ -197,12 +200,12 @@ export function useAnchors() {
   });
 }
 
-/** Most recent reset for one account (the point balances are counted from). */
+/** Most recent reset for one account, wallet or card. */
 export function latestAnchor(anchors: BalanceAnchor[], accountId: string) {
   return anchors.find((a) => a.account_id === accountId) ?? null;
 }
 
-/** Resets an account/wallet balance: later entries are counted from this point. */
+/** Resets a balance (account, wallet or card): later entries count from this point. */
 export function useResetBalance() {
   const { scopeUserId } = useAuth();
   const qc = useQueryClient();
@@ -211,15 +214,18 @@ export function useResetBalance() {
       accountId,
       balance,
       asOf,
+      linkedType = "account",
     }: {
       accountId: string;
       balance: number;
       asOf: string;
+      linkedType?: "account" | "card";
     }) => {
       if (!scopeUserId) throw new Error("Not signed in");
       const { error } = await supabase.from("balance_anchors").insert({
         user_id: scopeUserId,
         account_id: accountId,
+        linked_type: linkedType,
         balance_amount: balance,
         as_of_date: asOf,
       });
@@ -230,6 +236,126 @@ export function useResetBalance() {
     },
   });
 }
+
+/* --------------------------------------------------- saved periods (close & start new) */
+
+export type LedgerPeriod = {
+  id: string;
+  user_id: string;
+  linked_type: string;
+  linked_id: string;
+  label: string;
+  period_start: string;
+  period_end: string;
+  opening_balance: string | number;
+  closing_balance: string | number;
+  total_credit: string | number;
+  total_debit: string | number;
+  spend_limit: string | number | null;
+  entry_count: number;
+  csv_data: string | null;
+  created_at: string;
+};
+
+/** Every saved (closed) period, newest first. */
+export function usePeriods() {
+  const { scopeUserId } = useAuth();
+  return useQuery({
+    queryKey: ["ledger_periods", scopeUserId],
+    enabled: !!scopeUserId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ledger_periods")
+        .select("*")
+        .eq("user_id", scopeUserId!)
+        .order("period_end", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as LedgerPeriod[];
+    },
+  });
+}
+
+export type ClosePeriodInput = {
+  linkedType: "account" | "card";
+  linkedId: string;
+  label: string;
+  periodStart: string;
+  periodEnd: string;
+  openingBalance: number;
+  closingBalance: number;
+  totalCredit: number;
+  totalDebit: number;
+  entryCount: number;
+  csv: string;
+  /** Balance the next period starts from. */
+  newBalance: number;
+  /** Spend limit for the next period (null clears it). */
+  newLimit: number | null;
+};
+
+/**
+ * Saves a snapshot of the current period (totals + CSV), then re-anchors the
+ * balance and stores the new spend limit so fresh entries start clean.
+ */
+export function useClosePeriod() {
+  const { scopeUserId } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: ClosePeriodInput) => {
+      if (!scopeUserId) throw new Error("Not signed in");
+      const { error: periodError } = await supabase.from("ledger_periods").insert({
+        user_id: scopeUserId,
+        linked_type: input.linkedType,
+        linked_id: input.linkedId,
+        label: input.label,
+        period_start: input.periodStart,
+        period_end: input.periodEnd,
+        opening_balance: input.openingBalance,
+        closing_balance: input.closingBalance,
+        total_credit: input.totalCredit,
+        total_debit: input.totalDebit,
+        spend_limit: input.newLimit,
+        entry_count: input.entryCount,
+        csv_data: input.csv,
+      });
+      if (periodError) throw periodError;
+
+      const { error: anchorError } = await supabase.from("balance_anchors").insert({
+        user_id: scopeUserId,
+        account_id: input.linkedId,
+        linked_type: input.linkedType,
+        balance_amount: input.newBalance,
+        as_of_date: input.periodEnd,
+      });
+      if (anchorError) throw anchorError;
+
+      const table = input.linkedType === "card" ? "card_accounts" : "bank_accounts";
+      const { error: limitError } = await supabase
+        .from(table)
+        .update({ spend_limit: input.newLimit })
+        .eq("id", input.linkedId);
+      if (limitError) throw limitError;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["ledger_periods"] });
+      void qc.invalidateQueries({ queryKey: ["balance_anchors"] });
+      void qc.invalidateQueries({ queryKey: ["bank_accounts"] });
+      void qc.invalidateQueries({ queryKey: ["card_accounts"] });
+    },
+  });
+}
+
+export function useDeletePeriod() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("ledger_periods").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["ledger_periods"] }),
+  });
+}
+
 
 /* ------------------------------------------------------ statement bulk import */
 
