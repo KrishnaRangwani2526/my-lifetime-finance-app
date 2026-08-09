@@ -114,12 +114,42 @@ export function accountBalance(
     .reduce((sum, t) => sum + signedAmount(t), base);
 }
 
-/** Card outstanding: debits increase what you owe, credits (payments) reduce it. */
-export function cardOutstanding(cardId: string, transactions: Transaction[]): number {
+/**
+ * Card outstanding: debits increase what you owe, credits (payments) reduce it.
+ * With a reset (anchor) it starts from that figure and counts entries after it.
+ */
+export function cardOutstanding(
+  cardId: string,
+  transactions: Transaction[],
+  anchor?: { as_of_date: string; balance_amount: string | number } | null,
+): number {
+  const base = anchor ? num(anchor.balance_amount) : 0;
   return transactions
-    .filter((t) => t.linked_type === "card" && t.linked_id === cardId)
-    .reduce((sum, t) => sum + (t.direction === "debit" ? num(t.amount) : -num(t.amount)), 0);
+    .filter(
+      (t) =>
+        t.linked_type === "card" &&
+        t.linked_id === cardId &&
+        (!anchor || t.txn_date >= anchor.as_of_date),
+    )
+    .reduce((sum, t) => sum + (t.direction === "debit" ? num(t.amount) : -num(t.amount)), base);
 }
+
+/** Total debits for one account/card in the current (open) period. */
+export function periodSpend(
+  linkedId: string,
+  transactions: Transaction[],
+  since?: string | null,
+): number {
+  return transactions
+    .filter(
+      (t) =>
+        t.linked_id === linkedId &&
+        t.direction === "debit" &&
+        (!since || t.txn_date >= since),
+    )
+    .reduce((sum, t) => sum + num(t.amount), 0);
+}
+
 
 /** Days in a given month (1-indexed month). */
 function daysInMonth(year: number, month: number): number {
