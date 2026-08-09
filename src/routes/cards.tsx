@@ -1,16 +1,25 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { CreditCard, Loader2, Plus, Trash2 } from "lucide-react";
+import { ChevronRight, CreditCard, Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { RequireAuth } from "@/components/RequireAuth";
 import { EmptyState, MobileScreen, ScreenHeader } from "@/components/AppShell";
-import { useCards, useDeleteRow, useProfile, useSaveRow, useTransactions } from "@/hooks/useLedger";
-import { cardOutstanding, daysUntil, formatMoney, nextDueDate, num } from "@/lib/finance";
+import {
+  latestAnchor,
+  useAnchors,
+  useCards,
+  useDeleteRow,
+  useProfile,
+  useSaveRow,
+  useTransactions,
+} from "@/hooks/useLedger";
+import { cardCycle, cardOutstanding, formatExactDate, formatMoney, num } from "@/lib/finance";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+
 
 export const Route = createFileRoute("/cards")({
   head: () => ({
