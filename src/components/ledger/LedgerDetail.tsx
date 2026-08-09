@@ -17,9 +17,17 @@ import {
 import { CsvVault } from "@/components/ledger/CsvVault";
 import { EmiSheet } from "@/components/ledger/EmiSheet";
 import { ImportStatementSheet } from "@/components/ledger/ImportStatementSheet";
+import { PeriodPanel } from "@/components/ledger/PeriodPanel";
 import { QuickEntrySheet } from "@/components/ledger/QuickEntrySheet";
 import { TransactionRow } from "@/components/ledger/TransactionRow";
-import { useCategories, useEmis, useResetBalance, useTransactions } from "@/hooks/useLedger";
+import {
+  latestAnchor,
+  useAnchors,
+  useCategories,
+  useEmis,
+  useResetBalance,
+  useTransactions,
+} from "@/hooks/useLedger";
 import {
   emiNextDate,
   formatExactDate,
@@ -38,7 +46,9 @@ export function LedgerDetail({
   subtitle,
   currency,
   hero,
-  resettable = false,
+  balance,
+  spendLimit = null,
+  editSheet,
 }: {
   linkedType: "account" | "card";
   linkedId: string;
@@ -46,12 +56,16 @@ export function LedgerDetail({
   subtitle: string;
   currency: string;
   hero: ReactNode;
-  resettable?: boolean;
+  /** Current balance (accounts/wallets) or outstanding (cards). */
+  balance: number;
+  spendLimit?: number | null;
+  editSheet?: ReactNode;
 }) {
   const navigate = useNavigate();
   const { data: allTxns = [] } = useTransactions();
   const { data: categories = [] } = useCategories();
   const { data: emis = [] } = useEmis();
+  const { data: anchors = [] } = useAnchors();
   const [tab, setTab] = useState<"all" | "app" | "statement">("all");
 
   const txns = useMemo(
@@ -76,6 +90,7 @@ export function LedgerDetail({
     categories.find((c) => c.id === id)?.name ?? "Uncategorised";
 
   const myEmis = emis.filter((e) => e.linked_id === linkedId);
+  const anchor = latestAnchor(anchors, linkedId);
 
   return (
     <div className="min-h-dvh bg-background">
@@ -90,10 +105,11 @@ export function LedgerDetail({
           >
             <ChevronLeft className="size-5" />
           </button>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h1 className="truncate font-display text-lg font-semibold">{name}</h1>
             <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
           </div>
+          {editSheet}
         </div>
 
         {hero}
@@ -114,17 +130,32 @@ export function LedgerDetail({
             currency={currency}
           />
           <EmiSheet linkedType={linkedType} linkedId={linkedId} ownerLabel={name} />
-          <div className={cn(resettable ? "" : "col-span-2")}>
-            <ImportStatementSheet
-              linkedType={linkedType}
-              linkedId={linkedId}
-              ownerLabel={name}
-              currency={currency}
-              hasImported={hasImported}
-            />
-          </div>
-          {resettable && <ResetBalanceSheet accountId={linkedId} name={name} />}
+          <ImportStatementSheet
+            linkedType={linkedType}
+            linkedId={linkedId}
+            ownerLabel={name}
+            currency={currency}
+            hasImported={hasImported}
+          />
+          <ResetBalanceSheet
+            linkedType={linkedType}
+            accountId={linkedId}
+            name={name}
+            currentBalance={balance}
+          />
         </div>
+
+        <PeriodPanel
+          linkedType={linkedType}
+          linkedId={linkedId}
+          ownerLabel={name}
+          currency={currency}
+          txns={txns}
+          balance={balance}
+          spendLimit={spendLimit}
+          periodStart={anchor?.as_of_date ?? null}
+          categoryName={categoryName}
+        />
 
         {myEmis.length > 0 && (
           <section className="surface-card mt-4 divide-y divide-border overflow-hidden">
@@ -207,23 +238,34 @@ export function LedgerDetail({
   );
 }
 
-/** Wallet / bank balance reset — later entries are counted from this figure. */
-function ResetBalanceSheet({ accountId, name }: { accountId: string; name: string }) {
+/** Balance / outstanding reset — later entries are counted from this figure. */
+function ResetBalanceSheet({
+  linkedType,
+  accountId,
+  name,
+  currentBalance,
+}: {
+  linkedType: "account" | "card";
+  accountId: string;
+  name: string;
+  currentBalance: number;
+}) {
   const [open, setOpen] = useState(false);
   const [balance, setBalance] = useState("");
   const [asOf, setAsOf] = useState(todayISO());
   const reset = useResetBalance();
+  const isCard = linkedType === "card";
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const value = Number(balance);
-    if (!Number.isFinite(value)) {
-      toast.error("Enter the balance you can see today");
+    if (!Number.isFinite(value) || balance.trim() === "") {
+      toast.error(isCard ? "Enter the outstanding you can see today" : "Enter the balance you can see today");
       return;
     }
     try {
-      await reset.mutateAsync({ accountId, balance: value, asOf });
-      toast.success("Balance reset — new entries count from here");
+      await reset.mutateAsync({ accountId, balance: value, asOf, linkedType });
+      toast.success("Reset done — new entries count from here");
       setBalance("");
       setOpen(false);
     } catch (err) {
@@ -241,21 +283,22 @@ function ResetBalanceSheet({ accountId, name }: { accountId: string; name: strin
       </SheetTrigger>
       <SheetContent side="bottom" className="rounded-t-3xl">
         <SheetHeader>
-          <SheetTitle>Reset {name} balance</SheetTitle>
+          <SheetTitle>Reset {name}</SheetTitle>
           <SheetDescription>
-            Enter the real balance you can see right now. Every credit and debit after this date is
-            calculated from this figure, so drift is wiped out.
+            {isCard
+              ? "Enter the outstanding your card app shows right now. Every spend and payment after this date is calculated from this figure."
+              : "Enter the real balance you can see right now. Every credit and debit after this date is calculated from this figure, so drift is wiped out."}
           </SheetDescription>
         </SheetHeader>
         <form onSubmit={submit} className="space-y-4 pt-2">
           <div className="space-y-1.5">
-            <Label htmlFor="rb-amt">Actual balance</Label>
+            <Label htmlFor="rb-amt">{isCard ? "Actual outstanding" : "Actual balance"}</Label>
             <Input
               id="rb-amt"
               value={balance}
               onChange={(e) => setBalance(e.target.value.replace(/[^0-9.-]/g, ""))}
               inputMode="decimal"
-              placeholder="10000"
+              placeholder={currentBalance.toFixed(2)}
               className="numeric h-12"
             />
           </div>
@@ -271,7 +314,7 @@ function ResetBalanceSheet({ accountId, name }: { accountId: string; name: strin
           </div>
           <Button type="submit" className="w-full rounded-full" disabled={reset.isPending}>
             {reset.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-            Reset balance
+            Reset
           </Button>
         </form>
       </SheetContent>
