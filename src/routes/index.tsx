@@ -256,7 +256,7 @@ function Dashboard() {
               </Link>
             }
           >
-            Quick entries ({quickEntries.length})
+            {`Quick entries (${quickEntries.length})`}
           </SectionTitle>
           <div className="grid grid-cols-2 gap-2.5">
             {quickEntries.map((tpl) => (
