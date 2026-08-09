@@ -26,6 +26,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TemplatesRouteImport } from './routes/templates'
 import { Route as TransactionsRouteImport } from './routes/transactions'
 import { Route as AccountsAccountIdRouteImport } from './routes/accounts.$accountId'
+import { Route as CardsCardIdRouteImport } from './routes/cards.$cardId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -112,6 +113,11 @@ const AccountsAccountIdRoute = AccountsAccountIdRouteImport.update({
   path: '/$accountId',
   getParentRoute: () => AccountsRoute,
 } as any)
+const CardsCardIdRoute = CardsCardIdRouteImport.update({
+  id: '/$cardId',
+  path: '/$cardId',
+  getParentRoute: () => CardsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -119,7 +125,7 @@ export interface FileRoutesByFullPath {
   '/add': typeof AddRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
-  '/cards': typeof CardsRoute
+  '/cards': typeof CardsRouteWithChildren
   '/categories': typeof CategoriesRoute
   '/emis': typeof EmisRoute
   '/more': typeof MoreRoute
@@ -131,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/templates': typeof TemplatesRoute
   '/transactions': typeof TransactionsRoute
   '/accounts/$accountId': typeof AccountsAccountIdRoute
+  '/cards/$cardId': typeof CardsCardIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -138,7 +145,7 @@ export interface FileRoutesByTo {
   '/add': typeof AddRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
-  '/cards': typeof CardsRoute
+  '/cards': typeof CardsRouteWithChildren
   '/categories': typeof CategoriesRoute
   '/emis': typeof EmisRoute
   '/more': typeof MoreRoute
@@ -150,6 +157,7 @@ export interface FileRoutesByTo {
   '/templates': typeof TemplatesRoute
   '/transactions': typeof TransactionsRoute
   '/accounts/$accountId': typeof AccountsAccountIdRoute
+  '/cards/$cardId': typeof CardsCardIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -158,7 +166,7 @@ export interface FileRoutesById {
   '/add': typeof AddRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
-  '/cards': typeof CardsRoute
+  '/cards': typeof CardsRouteWithChildren
   '/categories': typeof CategoriesRoute
   '/emis': typeof EmisRoute
   '/more': typeof MoreRoute
@@ -170,6 +178,7 @@ export interface FileRoutesById {
   '/templates': typeof TemplatesRoute
   '/transactions': typeof TransactionsRoute
   '/accounts/$accountId': typeof AccountsAccountIdRoute
+  '/cards/$cardId': typeof CardsCardIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -191,6 +200,7 @@ export interface FileRouteTypes {
     | '/templates'
     | '/transactions'
     | '/accounts/$accountId'
+    | '/cards/$cardId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -210,6 +220,7 @@ export interface FileRouteTypes {
     | '/templates'
     | '/transactions'
     | '/accounts/$accountId'
+    | '/cards/$cardId'
   id:
     | '__root__'
     | '/'
@@ -229,6 +240,7 @@ export interface FileRouteTypes {
     | '/templates'
     | '/transactions'
     | '/accounts/$accountId'
+    | '/cards/$cardId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -237,7 +249,7 @@ export interface RootRouteChildren {
   AddRoute: typeof AddRoute
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
-  CardsRoute: typeof CardsRoute
+  CardsRoute: typeof CardsRouteWithChildren
   CategoriesRoute: typeof CategoriesRoute
   EmisRoute: typeof EmisRoute
   MoreRoute: typeof MoreRoute
@@ -371,6 +383,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountsAccountIdRouteImport
       parentRoute: typeof AccountsRoute
     }
+    '/cards/$cardId': {
+      id: '/cards/$cardId'
+      path: '/$cardId'
+      fullPath: '/cards/$cardId'
+      preLoaderRoute: typeof CardsCardIdRouteImport
+      parentRoute: typeof CardsRoute
+    }
   }
 }
 
@@ -386,13 +405,23 @@ const AccountsRouteWithChildren = AccountsRoute._addFileChildren(
   AccountsRouteChildren,
 )
 
+interface CardsRouteChildren {
+  CardsCardIdRoute: typeof CardsCardIdRoute
+}
+
+const CardsRouteChildren: CardsRouteChildren = {
+  CardsCardIdRoute: CardsCardIdRoute,
+}
+
+const CardsRouteWithChildren = CardsRoute._addFileChildren(CardsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountsRoute: AccountsRouteWithChildren,
   AddRoute: AddRoute,
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
-  CardsRoute: CardsRoute,
+  CardsRoute: CardsRouteWithChildren,
   CategoriesRoute: CategoriesRoute,
   EmisRoute: EmisRoute,
   MoreRoute: MoreRoute,

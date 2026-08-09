@@ -151,38 +151,46 @@ function Cards() {
       ) : (
         <div className="space-y-3">
           {cards.map((c) => {
-            const owed = cardOutstanding(c.id, txns);
+            const anchor = latestAnchor(anchors, c.id);
+            const owed = cardOutstanding(c.id, txns, anchor);
             const lim = num(c.credit_limit);
             const pct = lim > 0 ? Math.min((owed / lim) * 100, 100) : 0;
-            const days = daysUntil(nextDueDate(c.due_date));
+            const cycle = cardCycle(c.billing_date, c.due_date);
             return (
               <div key={c.id} className="surface-card p-4">
                 <div className="flex items-start gap-3">
-                  <span className="flex size-10 items-center justify-center rounded-xl bg-secondary text-accent">
-                    <CreditCard className="size-5" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{c.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Due {days <= 0 ? "today" : `in ${days} day${days === 1 ? "" : "s"}`}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="numeric font-display font-semibold text-debit">
-                      {formatMoney(owed, currency)}
-                    </p>
-                    {lim > 0 && (
-                      <p className="numeric text-[11px] text-muted-foreground">
-                        of {formatMoney(lim, currency, true)}
+                  <Link
+                    to="/cards/$cardId"
+                    params={{ cardId: c.id }}
+                    className="flex min-w-0 flex-1 items-start gap-3"
+                  >
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-accent">
+                      <CreditCard className="size-5" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{c.name}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        Bills {formatExactDate(cycle.billing)} · due {formatExactDate(cycle.due)}
                       </p>
-                    )}
-                  </div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="numeric font-display font-semibold text-debit">
+                        {formatMoney(owed, currency)}
+                      </p>
+                      {lim > 0 && (
+                        <p className="numeric text-[11px] text-muted-foreground">
+                          of {formatMoney(lim, currency, true)}
+                        </p>
+                      )}
+                    </div>
+                    <ChevronRight className="mt-1 size-4 shrink-0 text-muted-foreground" />
+                  </Link>
                   <button
                     onClick={() => {
                       void remove.mutateAsync(c.id).then(() => toast.success("Card removed"));
                     }}
                     aria-label={`Delete ${c.name}`}
-                    className="text-muted-foreground transition-colors active:text-destructive"
+                    className="shrink-0 text-muted-foreground transition-colors active:text-destructive"
                   >
                     <Trash2 className="size-4" />
                   </button>
@@ -196,3 +204,4 @@ function Cards() {
     </MobileScreen>
   );
 }
+
