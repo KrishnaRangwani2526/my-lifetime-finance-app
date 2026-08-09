@@ -26,10 +26,13 @@ import {
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/add")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    id: typeof search["id"] === "string" ? search["id"] : undefined,
-    linked: typeof search["linked"] === "string" ? search["linked"] : undefined,
-  }),
+  validateSearch: (search: Record<string, unknown>): { id?: string; linked?: string } => {
+    const out: { id?: string; linked?: string } = {};
+    if (typeof search["id"] === "string") out.id = search["id"];
+    if (typeof search["linked"] === "string") out.linked = search["linked"];
+    return out;
+  },
+
   head: () => ({
     meta: [
       { title: "Add an entry — MyLedger" },
