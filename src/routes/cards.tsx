@@ -47,6 +47,8 @@ function Cards() {
   const { data: profile } = useProfile();
   const { data: cards = [] } = useCards();
   const { data: txns = [] } = useTransactions();
+  const { data: anchors = [] } = useAnchors();
+
   const save = useSaveRow("card_accounts");
   const remove = useDeleteRow("card_accounts");
   const [open, setOpen] = useState(false);
