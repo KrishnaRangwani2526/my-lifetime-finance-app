@@ -23,7 +23,9 @@ const LEDGER_TABLES = [
   "quick_entry_templates",
   "profiles",
   "balance_anchors",
+  "ledger_periods",
 ] as const;
+
 
 export type LedgerTable = (typeof LEDGER_TABLES)[number];
 
