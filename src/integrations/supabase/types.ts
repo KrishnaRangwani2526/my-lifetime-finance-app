@@ -21,6 +21,7 @@ export type Database = {
           balance_amount: number
           created_at: string
           id: string
+          linked_type: string
           user_id: string
         }
         Insert: {
@@ -29,6 +30,7 @@ export type Database = {
           balance_amount: number
           created_at?: string
           id?: string
+          linked_type?: string
           user_id: string
         }
         Update: {
@@ -37,17 +39,10 @@ export type Database = {
           balance_amount?: number
           created_at?: string
           id?: string
+          linked_type?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "balance_anchors_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "bank_accounts"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       bank_accounts: {
         Row: {
@@ -58,6 +53,7 @@ export type Database = {
           is_confirmed: boolean
           name: string
           source_app: string | null
+          spend_limit: number | null
           updated_at: string
           user_id: string
         }
@@ -69,6 +65,7 @@ export type Database = {
           is_confirmed?: boolean
           name: string
           source_app?: string | null
+          spend_limit?: number | null
           updated_at?: string
           user_id: string
         }
@@ -80,6 +77,7 @@ export type Database = {
           is_confirmed?: boolean
           name?: string
           source_app?: string | null
+          spend_limit?: number | null
           updated_at?: string
           user_id?: string
         }
@@ -140,6 +138,7 @@ export type Database = {
           is_confirmed: boolean
           last4: string | null
           name: string
+          spend_limit: number | null
           updated_at: string
           user_id: string
         }
@@ -153,6 +152,7 @@ export type Database = {
           is_confirmed?: boolean
           last4?: string | null
           name: string
+          spend_limit?: number | null
           updated_at?: string
           user_id: string
         }
@@ -166,6 +166,7 @@ export type Database = {
           is_confirmed?: boolean
           last4?: string | null
           name?: string
+          spend_limit?: number | null
           updated_at?: string
           user_id?: string
         }
@@ -247,6 +248,63 @@ export type Database = {
           start_date?: string
           title?: string
           total_installments?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ledger_periods: {
+        Row: {
+          closing_balance: number
+          created_at: string
+          csv_data: string | null
+          entry_count: number
+          id: string
+          label: string
+          linked_id: string
+          linked_type: string
+          opening_balance: number
+          period_end: string
+          period_start: string
+          spend_limit: number | null
+          total_credit: number
+          total_debit: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          closing_balance?: number
+          created_at?: string
+          csv_data?: string | null
+          entry_count?: number
+          id?: string
+          label: string
+          linked_id: string
+          linked_type?: string
+          opening_balance?: number
+          period_end?: string
+          period_start: string
+          spend_limit?: number | null
+          total_credit?: number
+          total_debit?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          closing_balance?: number
+          created_at?: string
+          csv_data?: string | null
+          entry_count?: number
+          id?: string
+          label?: string
+          linked_id?: string
+          linked_type?: string
+          opening_balance?: number
+          period_end?: string
+          period_start?: string
+          spend_limit?: number | null
+          total_credit?: number
+          total_debit?: number
           updated_at?: string
           user_id?: string
         }
