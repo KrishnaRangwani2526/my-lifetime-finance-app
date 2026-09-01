@@ -236,3 +236,35 @@ export function formatExactDate(iso: string): string {
     year: "numeric",
   });
 }
+
+/** Exact local date and time for an activity row. */
+export function formatTransactionDateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString(undefined, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+/** A datetime-local value that preserves the user's local clock when editing. */
+export function localTimeInput(value?: string | null): string {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) return "12:00";
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
+/** The first day of the next calendar month. */
+export function nextMonthStartISO(): string {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth() + 1, 1).toISOString().slice(0, 10);
+}
+
+/** The final day of the previous calendar month. */
+export function previousMonthEndISO(): string {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth(), 0).toISOString().slice(0, 10);
+}

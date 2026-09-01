@@ -88,7 +88,7 @@ function useOwnedQuery<T>(
 }
 
 export const useTransactions = () =>
-  useOwnedQuery<Transaction>("transactions", { column: "txn_date", asc: false });
+  useOwnedQuery<Transaction>("transactions", { column: "created_at", asc: false });
 export const useAccounts = () =>
   useOwnedQuery<BankAccount>("bank_accounts", { column: "created_at", asc: true });
 export const useCards = () =>
@@ -353,6 +353,58 @@ export function useDeletePeriod() {
       if (error) throw error;
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["ledger_periods"] }),
+  });
+}
+
+/** Archives the previous calendar month for every asset and starts all assets at zero. */
+export function useStartNewMonth() {
+  const { scopeUserId } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      periodStart: string;
+      periodEnd: string;
+      nextStart: string;
+      periods: Array<{
+        linked_type: "account" | "card";
+        linked_id: string;
+        label: string;
+        opening_balance: number;
+        closing_balance: number;
+        total_credit: number;
+        total_debit: number;
+        entry_count: number;
+        csv_data: string;
+        spend_limit: number | null;
+      }>;
+    }) => {
+      if (!scopeUserId) throw new Error("Not signed in");
+      const { error: periodsError } = await supabase.from("ledger_periods").insert(
+        input.periods.map((period) => ({
+          ...period,
+          user_id: scopeUserId,
+          period_start: input.periodStart,
+          period_end: input.periodEnd,
+        })),
+      );
+      if (periodsError) throw periodsError;
+
+      const { error: anchorsError } = await supabase.from("balance_anchors").insert(
+        input.periods.map((period) => ({
+          user_id: scopeUserId,
+          account_id: period.linked_id,
+          linked_type: period.linked_type,
+          balance_amount: 0,
+          as_of_date: input.nextStart,
+        })),
+      );
+      if (anchorsError) throw anchorsError;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["ledger_periods"] });
+      void qc.invalidateQueries({ queryKey: ["balance_anchors"] });
+      void qc.invalidateQueries({ queryKey: ["transactions"] });
+    },
   });
 }
 

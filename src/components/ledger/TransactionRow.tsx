@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowDownLeft, ArrowUpRight, type LucideIcon } from "lucide-react";
-import { formatDay, formatMoney, num, weekdayName, type Transaction } from "@/lib/finance";
+import { formatDay, formatMoney, formatTransactionDateTime, num, type Transaction } from "@/lib/finance";
 import { cn } from "@/lib/utils";
 
 export function TransactionRow({
@@ -42,9 +42,7 @@ export function TransactionRow({
           {credit ? "+" : "−"}
           {formatMoney(num(txn.amount), currency)}
         </p>
-        <p className="text-[11px] text-muted-foreground">
-          {formatDay(txn.txn_date)} · {weekdayName(txn.txn_date)}
-        </p>
+        <p className="text-[11px] text-muted-foreground">{formatTransactionDateTime(txn.created_at)}</p>
       </div>
     </Link>
   );

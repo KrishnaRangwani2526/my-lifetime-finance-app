@@ -12,7 +12,7 @@ import {
   useSaveRow,
   useTransactions,
 } from "@/hooks/useLedger";
-import { currencyMeta, num, todayISO, weekdayName, type Direction } from "@/lib/finance";
+import { currencyMeta, localTimeInput, num, todayISO, weekdayName, type Direction } from "@/lib/finance";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -73,6 +73,7 @@ function AddEntry() {
   const [target, setTarget] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [date, setDate] = useState(todayISO());
+  const [time, setTime] = useState(localTimeInput());
   const [description, setDescription] = useState("");
   const [merchant, setMerchant] = useState("");
 
@@ -91,6 +92,7 @@ function AddEntry() {
       setTarget(`${existing.linked_type}:${existing.linked_id ?? ""}`);
       setCategoryId(existing.category_id ?? "");
       setDate(existing.txn_date);
+      setTime(localTimeInput(existing.created_at));
       setDescription(existing.description ?? "");
       setMerchant(existing.merchant ?? "");
     } else if (!target) {
@@ -121,6 +123,7 @@ function AddEntry() {
           amount: value,
           direction,
           txn_date: date,
+          created_at: `${date}T${time}:00`,
           category_id: categoryId || null,
           description: description || null,
           merchant: merchant || null,
@@ -205,7 +208,15 @@ function AddEntry() {
             </div>
           </div>
 
-          <div className="space-y-1.5">
+          {!id && linked ? (
+            <div className="rounded-2xl border border-primary/25 bg-primary/5 px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">Entry linked to</p>
+              <p className="mt-1 text-sm font-semibold">
+                {options.find((option) => option.key === target)?.label ?? "Selected account"}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
             <Label>Paid from / into</Label>
             <Select value={target} onValueChange={setTarget}>
               <SelectTrigger className="h-12">
@@ -224,8 +235,10 @@ function AddEntry() {
                 No accounts yet — add one from Accounts.
               </p>
             )}
-          </div>
+            </div>
+          )}
 
+          {!linked && (
           <div className="space-y-1.5">
             <Label>Category</Label>
             <Select value={categoryId} onValueChange={setCategoryId}>
@@ -241,6 +254,7 @@ function AddEntry() {
               </SelectContent>
             </Select>
           </div>
+          )}
 
           <div className="space-y-1.5">
             <Label htmlFor="date">Date</Label>
@@ -255,16 +269,22 @@ function AddEntry() {
           </div>
 
           <div className="space-y-1.5">
+            <Label htmlFor="time">Time</Label>
+            <Input id="time" type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-12" />
+          </div>
+
+          <div className="space-y-1.5">
             <Label htmlFor="note">Note</Label>
             <Input
               id="note"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Lunch with team"
+              placeholder={linked ? "What was it for?" : "Lunch with team"}
               className="h-12"
             />
           </div>
 
+          {!linked && (
           <div className="space-y-1.5">
             <Label htmlFor="merchant">Merchant (optional)</Label>
             <Input
@@ -275,6 +295,7 @@ function AddEntry() {
               className="h-12"
             />
           </div>
+          )}
 
           <Button
             type="submit"

@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCategories, useSaveRow, useTemplates } from "@/hooks/useLedger";
-import { formatMoney, num, todayISO, weekdayName } from "@/lib/finance";
+import { formatMoney, localTimeInput, num, todayISO, weekdayName } from "@/lib/finance";
 import { cn } from "@/lib/utils";
 
 /**
@@ -46,6 +46,7 @@ export function QuickEntrySheet({
   const [direction, setDirection] = useState<"debit" | "credit">("debit");
   const [categoryId, setCategoryId] = useState("");
   const [date, setDate] = useState(todayISO());
+  const [time, setTime] = useState(localTimeInput());
 
   const { data: templates = [] } = useTemplates();
   const { data: categories = [] } = useCategories();
@@ -64,6 +65,7 @@ export function QuickEntrySheet({
         amount: num(tpl.amount),
         direction: tpl.direction,
         txn_date: date,
+        created_at: `${date}T${time}:00`,
         category_id: tpl.category_id,
         description: tpl.description ?? tpl.name,
         source: "template",
@@ -140,6 +142,16 @@ export function QuickEntrySheet({
               className="h-11"
             />
             <p className="text-xs font-medium text-muted-foreground">{weekdayName(date)}</p>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`qe-time-${linkedId}`}>Time</Label>
+            <Input
+              id={`qe-time-${linkedId}`}
+              type="time"
+              value={time}
+              onChange={(event) => setTime(event.target.value)}
+              className="h-11"
+            />
           </div>
           {mine.length > 0 && (
             <div className="grid grid-cols-2 gap-2">

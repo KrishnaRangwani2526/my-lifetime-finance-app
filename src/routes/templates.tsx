@@ -13,7 +13,7 @@ import {
   useSaveRow,
   useTemplates,
 } from "@/hooks/useLedger";
-import { formatMoney, num, todayISO, weekdayName } from "@/lib/finance";
+import { formatMoney, localTimeInput, num, todayISO, weekdayName } from "@/lib/finance";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,6 +66,7 @@ function Templates() {
   const [target, setTarget] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [date, setDate] = useState(todayISO());
+  const [time, setTime] = useState(localTimeInput());
 
   const currency = profile?.currency ?? "INR";
   const options = [
@@ -116,6 +117,7 @@ function Templates() {
         amount: num(tpl.amount),
         direction: tpl.direction,
         txn_date: date,
+        created_at: `${date}T${time}:00`,
         category_id: tpl.category_id,
         description: tpl.description ?? tpl.name,
         source: "template",
@@ -233,6 +235,8 @@ function Templates() {
               className="mt-1.5 h-11"
             />
             <p className="mt-1 text-xs font-medium text-muted-foreground">{weekdayName(date)}</p>
+            <Label htmlFor="quick-time" className="mt-3 block">Time</Label>
+            <Input id="quick-time" type="time" value={time} onChange={(event) => setTime(event.target.value)} className="mt-1.5 h-11" />
           </div>
           {templates.map((t) => (
             <div key={t.id} className="surface-card flex items-center gap-3 p-4">
