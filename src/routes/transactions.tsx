@@ -59,7 +59,9 @@ function Activity() {
       const key = t.txn_date.slice(0, 7);
       map.set(key, [...(map.get(key) ?? []), t]);
     }
-    return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+    return [...map.entries()]
+      .map(([month, rows]) => [month, [...rows].sort((a, b) => b.created_at.localeCompare(a.created_at))] as const)
+      .sort((a, b) => b[0].localeCompare(a[0]));
   }, [filtered]);
 
   const catName = (id: string | null) => categories.find((c) => c.id === id)?.name;
