@@ -21,6 +21,7 @@ import {
   monthKey,
   num,
   monthStartISO,
+  nextDayISO,
   cardOutstanding,
   type BankAccount,
   type CardAccount,
@@ -46,19 +47,19 @@ export function StartNewMonthSheet({
   const [label, setLabel] = useState(
     new Date().toLocaleDateString(undefined, { month: "long", year: "numeric" }),
   );
-  const periodStart = monthStartISO(-1);
-  const periodEnd = previousMonthEndISO();
-  const nextStart = monthStartISO();
-  const previousMonth = monthKey(periodStart);
-  const previousRows = transactions.filter((transaction) => monthKey(transaction.txn_date) === previousMonth);
+  const periodStart = monthStartISO();
+  const periodEnd = new Date().toISOString().slice(0, 10);
+  const nextStart = nextDayISO();
+  const currentMonth = monthKey(periodStart);
+  const currentRows = transactions.filter((transaction) => monthKey(transaction.txn_date) === currentMonth);
   const categoryName = (id: string | null) => categories.find((category) => category.id === id)?.name ?? "Uncategorised";
   const assetCount = accounts.length + cards.length;
 
   const summary = useMemo(() => {
-    const credit = previousRows.filter((row) => row.direction === "credit").reduce((sum, row) => sum + num(row.amount), 0);
-    const debit = previousRows.filter((row) => row.direction === "debit").reduce((sum, row) => sum + num(row.amount), 0);
+    const credit = currentRows.filter((row) => row.direction === "credit").reduce((sum, row) => sum + num(row.amount), 0);
+    const debit = currentRows.filter((row) => row.direction === "debit").reduce((sum, row) => sum + num(row.amount), 0);
     return { credit, debit };
-  }, [previousRows]);
+  }, [currentRows]);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -69,7 +70,7 @@ export function StartNewMonthSheet({
 
     const periods = [
       ...accounts.map((account) => {
-        const rows = previousRows.filter(
+        const rows = currentRows.filter(
           (transaction) => transaction.linked_type === "account" && transaction.linked_id === account.id,
         );
         const closing = accountBalance(account.id, transactions);
@@ -78,7 +79,7 @@ export function StartNewMonthSheet({
         return {
           linked_type: "account" as const,
           linked_id: account.id,
-          label: `${label.trim() || previousMonth} · ${account.name}`,
+          label: `${label.trim() || currentMonth} · ${account.name}`,
           opening_balance: closing - totalCredit + totalDebit,
           closing_balance: closing,
           total_credit: totalCredit,
@@ -89,7 +90,7 @@ export function StartNewMonthSheet({
         };
       }),
       ...cards.map((card) => {
-        const rows = previousRows.filter(
+        const rows = currentRows.filter(
           (transaction) => transaction.linked_type === "card" && transaction.linked_id === card.id,
         );
         const closing = cardOutstanding(card.id, transactions);
@@ -98,7 +99,7 @@ export function StartNewMonthSheet({
         return {
           linked_type: "card" as const,
           linked_id: card.id,
-          label: `${label.trim() || previousMonth} · ${card.name}`,
+          label: `${label.trim() || currentMonth} · ${card.name}`,
           opening_balance: closing - totalDebit + totalCredit,
           closing_balance: closing,
           total_credit: totalCredit,
@@ -140,7 +141,7 @@ export function StartNewMonthSheet({
             <div className="min-w-0 text-xs">
               <p className="font-semibold">{assetCount} spaces will be reset</p>
               <p className="text-muted-foreground">
-                {formatMoney(summary.credit, currency, true)} in · {formatMoney(summary.debit, currency, true)} out · {previousRows.length} entries
+                {formatMoney(summary.credit, currency, true)} in · {formatMoney(summary.debit, currency, true)} out · {currentRows.length} entries
               </p>
             </div>
           </div>
