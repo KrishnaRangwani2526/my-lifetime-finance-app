@@ -9,6 +9,7 @@ export type CsvContext = {
 
 const HEADERS = [
   "Date",
+  "Exact time",
   "Month",
   "Account / Card",
   "Direction",
@@ -26,6 +27,7 @@ export function isStatementRow(t: Transaction) {
 export function txnToRow(t: Transaction, ctx: CsvContext) {
   return {
     Date: t.txn_date,
+    "Exact time": new Date(t.created_at).toISOString(),
     Month: t.txn_date.slice(0, 7),
     "Account / Card": ctx.ownerLabel,
     Direction: t.direction === "credit" ? "Credit (money in)" : "Debit (money out)",

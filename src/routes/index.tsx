@@ -40,6 +40,7 @@ import {
 } from "@/lib/finance";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { StartNewMonthSheet } from "@/components/ledger/StartNewMonthSheet";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
@@ -247,6 +248,16 @@ function Dashboard() {
         />
       </div>
 
+      <div className="mt-4">
+        <StartNewMonthSheet
+          accounts={accounts}
+          cards={cards}
+          transactions={txns}
+          categories={categories}
+          currency={currency}
+        />
+      </div>
+
       {quickEntries.length > 0 && (
         <>
           <SectionTitle
@@ -298,43 +309,31 @@ function Dashboard() {
           </SectionTitle>
           <div className="no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
             {accounts.map((a) => (
-              <Link
-                key={a.id}
-                to="/accounts/$accountId"
-                params={{ accountId: a.id }}
-                className="surface-card min-w-[10.5rem] shrink-0 p-4"
-              >
-                <span className="mb-2 flex size-8 items-center justify-center rounded-lg bg-secondary text-primary">
-                  {a.account_type === "wallet" ? (
-                    <Wallet className="size-4" />
-                  ) : (
-                    <Landmark className="size-4" />
-                  )}
-                </span>
-                <p className="truncate text-sm font-medium">{a.name}</p>
-                <p className="numeric text-base font-semibold">
-                  {formatMoney(balanceOf(a.id), currency)}
-                </p>
-              </Link>
+              <div key={a.id} className="surface-card min-w-[12rem] shrink-0 p-4">
+                <Link to="/accounts/$accountId" params={{ accountId: a.id }} className="block">
+                  <span className="mb-2 flex size-8 items-center justify-center rounded-lg bg-secondary text-primary">
+                    {a.account_type === "wallet" ? <Wallet className="size-4" /> : <Landmark className="size-4" />}
+                  </span>
+                  <p className="truncate text-sm font-medium">{a.name}</p>
+                  <p className="numeric text-base font-semibold">{formatMoney(balanceOf(a.id), currency)}</p>
+                </Link>
+                <Button asChild variant="secondary" size="sm" className="mt-3 w-full rounded-xl">
+                  <Link to="/add" search={{ linked: `account:${a.id}` }}><Plus className="size-3.5" /> Add entry</Link>
+                </Button>
+              </div>
             ))}
             {cards.map((c) => (
-              <Link
-                key={c.id}
-                to="/cards/$cardId"
-                params={{ cardId: c.id }}
-                className="surface-card min-w-[10.5rem] shrink-0 p-4"
-              >
-                <span className="mb-2 flex size-8 items-center justify-center rounded-lg bg-secondary text-accent">
-                  <CreditCard className="size-4" />
-                </span>
-                <p className="truncate text-sm font-medium">{c.name}</p>
-                <p className="numeric text-base font-semibold text-debit">
-                  {formatMoney(owedOf(c.id), currency)}
-                </p>
-                <p className="text-[11px] text-muted-foreground">
-                  Due {formatExactDate(cardCycle(c.billing_date, c.due_date).due)}
-                </p>
-              </Link>
+              <div key={c.id} className="surface-card min-w-[12rem] shrink-0 p-4">
+                <Link to="/cards/$cardId" params={{ cardId: c.id }} className="block">
+                  <span className="mb-2 flex size-8 items-center justify-center rounded-lg bg-secondary text-accent"><CreditCard className="size-4" /></span>
+                  <p className="truncate text-sm font-medium">{c.name}</p>
+                  <p className="numeric text-base font-semibold text-debit">{formatMoney(owedOf(c.id), currency)}</p>
+                  <p className="text-[11px] text-muted-foreground">Due {formatExactDate(cardCycle(c.billing_date, c.due_date).due)}</p>
+                </Link>
+                <Button asChild variant="secondary" size="sm" className="mt-3 w-full rounded-xl">
+                  <Link to="/add" search={{ linked: `card:${c.id}` }}><Plus className="size-3.5" /> Add entry</Link>
+                </Button>
+              </div>
             ))}
           </div>
         </>
