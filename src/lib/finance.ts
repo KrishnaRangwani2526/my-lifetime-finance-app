@@ -268,3 +268,10 @@ export function previousMonthEndISO(): string {
   const d = new Date();
   return new Date(d.getFullYear(), d.getMonth(), 0).toISOString().slice(0, 10);
 }
+
+/** Tomorrow's calendar date, used as the first date of a manually started period. */
+export function nextDayISO(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
