@@ -51,7 +51,9 @@ export function StartNewMonthSheet({
   const periodEnd = new Date().toISOString().slice(0, 10);
   const nextStart = nextDayISO();
   const currentMonth = monthKey(periodStart);
-  const currentRows = transactions.filter((transaction) => monthKey(transaction.txn_date) === currentMonth);
+  const currentRows = transactions.filter(
+    (transaction) => monthKey(transaction.txn_date) === currentMonth && transaction.txn_date <= periodEnd,
+  );
   const categoryName = (id: string | null) => categories.find((category) => category.id === id)?.name ?? "Uncategorised";
   const assetCount = accounts.length + cards.length;
 
