@@ -41,6 +41,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { StartNewMonthSheet } from "@/components/ledger/StartNewMonthSheet";
+import { QuickEntrySheet } from "@/components/ledger/QuickEntrySheet";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
@@ -320,6 +321,7 @@ function Dashboard() {
                 <Button asChild variant="secondary" size="sm" className="mt-3 w-full rounded-xl">
                   <Link to="/add" search={{ linked: `account:${a.id}` }}><Plus className="size-3.5" /> Add entry</Link>
                 </Button>
+                <div className="mt-2"><QuickEntrySheet linkedType="account" linkedId={a.id} ownerLabel={a.name} currency={currency} /></div>
               </div>
             ))}
             {cards.map((c) => (
@@ -333,6 +335,7 @@ function Dashboard() {
                 <Button asChild variant="secondary" size="sm" className="mt-3 w-full rounded-xl">
                   <Link to="/add" search={{ linked: `card:${c.id}` }}><Plus className="size-3.5" /> Add entry</Link>
                 </Button>
+                <div className="mt-2"><QuickEntrySheet linkedType="card" linkedId={c.id} ownerLabel={c.name} currency={currency} /></div>
               </div>
             ))}
           </div>
