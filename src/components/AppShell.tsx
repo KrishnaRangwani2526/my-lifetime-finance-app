@@ -1,17 +1,21 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import {
   Eye,
   LayoutDashboard,
   ListOrdered,
+  Moon,
   Plus,
   PieChart,
   MoreHorizontal,
+  Sun,
   type LucideIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 
 type Tab = { to: string; label: string; icon: LucideIcon };
@@ -121,8 +125,43 @@ export function ScreenHeader({
         <h1 className="font-display text-2xl font-semibold">{title}</h1>
         {subtitle && <p className="mt-0.5 text-sm text-muted-foreground">{subtitle}</p>}
       </div>
-      {action}
+      <div className="flex shrink-0 items-center gap-2">
+        <ThemeToggle />
+        {action}
+      </div>
     </header>
+  );
+}
+
+export function ThemeToggle() {
+  const [dark, setDark] = useState(false);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("mledger-theme");
+    const isDark = saved === "dark";
+    setDark(isDark);
+    document.documentElement.classList.toggle("dark", isDark);
+  }, []);
+
+  function toggle() {
+    const next = !dark;
+    setDark(next);
+    window.localStorage.setItem("mledger-theme", next ? "dark" : "light");
+    document.documentElement.classList.toggle("dark", next);
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="icon"
+      onClick={toggle}
+      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+      title={dark ? "Switch to light mode" : "Switch to dark mode"}
+      className="size-10 rounded-full"
+    >
+      {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
+    </Button>
   );
 }
 

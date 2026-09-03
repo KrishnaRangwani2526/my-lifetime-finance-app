@@ -82,7 +82,14 @@ function Dashboard() {
 
   const currency = profile?.currency ?? "INR";
   const monthStart = monthStartISO();
-  const thisMonth = txns.filter((t) => t.txn_date >= monthStart);
+  const activeStart = anchors.reduce(
+    (latest, anchor) => (anchor.as_of_date > latest ? anchor.as_of_date : latest),
+    monthStart,
+  );
+  const thisMonth = txns.filter((t) => {
+    const anchor = t.linked_id ? latestAnchor(anchors, t.linked_id) : null;
+    return t.txn_date >= (anchor?.as_of_date ?? activeStart);
+  });
 
   const income = thisMonth
     .filter((t) => t.direction === "credit")

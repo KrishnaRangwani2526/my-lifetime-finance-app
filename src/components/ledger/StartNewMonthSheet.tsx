@@ -32,12 +32,14 @@ import {
 export function StartNewMonthSheet({
   accounts,
   cards,
+  anchors,
   transactions,
   categories,
   currency,
 }: {
   accounts: BankAccount[];
   cards: CardAccount[];
+  anchors: Array<{ account_id: string; as_of_date: string; balance_amount: string | number }>;
   transactions: Transaction[];
   categories: Category[];
   currency: string;
@@ -51,6 +53,17 @@ export function StartNewMonthSheet({
   const periodEnd = new Date().toISOString().slice(0, 10);
   const nextStart = nextDayISO();
   const currentMonth = monthKey(periodStart);
+  const rowsFor = (linkedType: "account" | "card", linkedId: string) => {
+    const anchor = anchors.find((item) => item.account_id === linkedId);
+    const start = anchor?.as_of_date && anchor.as_of_date > periodStart ? anchor.as_of_date : periodStart;
+    return transactions.filter(
+      (transaction) =>
+        transaction.linked_type === linkedType &&
+        transaction.linked_id === linkedId &&
+        transaction.txn_date >= start &&
+        transaction.txn_date <= periodEnd,
+    );
+  };
   const currentRows = transactions.filter(
     (transaction) => monthKey(transaction.txn_date) === currentMonth && transaction.txn_date <= periodEnd,
   );
@@ -72,10 +85,9 @@ export function StartNewMonthSheet({
 
     const periods = [
       ...accounts.map((account) => {
-        const rows = currentRows.filter(
-          (transaction) => transaction.linked_type === "account" && transaction.linked_id === account.id,
-        );
-        const closing = accountBalance(account.id, transactions);
+        const rows = rowsFor("account", account.id);
+        const anchor = anchors.find((item) => item.account_id === account.id);
+        const closing = accountBalance(account.id, transactions, anchor);
         const totalCredit = rows.filter((row) => row.direction === "credit").reduce((sum, row) => sum + num(row.amount), 0);
         const totalDebit = rows.filter((row) => row.direction === "debit").reduce((sum, row) => sum + num(row.amount), 0);
         return {
@@ -92,10 +104,9 @@ export function StartNewMonthSheet({
         };
       }),
       ...cards.map((card) => {
-        const rows = currentRows.filter(
-          (transaction) => transaction.linked_type === "card" && transaction.linked_id === card.id,
-        );
-        const closing = cardOutstanding(card.id, transactions);
+        const rows = rowsFor("card", card.id);
+        const anchor = anchors.find((item) => item.account_id === card.id);
+        const closing = cardOutstanding(card.id, transactions, anchor);
         const totalCredit = rows.filter((row) => row.direction === "credit").reduce((sum, row) => sum + num(row.amount), 0);
         const totalDebit = rows.filter((row) => row.direction === "debit").reduce((sum, row) => sum + num(row.amount), 0);
         return {

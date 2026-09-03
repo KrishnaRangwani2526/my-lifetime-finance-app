@@ -256,25 +256,35 @@ function AddEntry() {
           </div>
           )}
 
-          <div className="space-y-1.5">
-            <Label htmlFor="date">Date</Label>
-            <Input
-              id="date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="h-12"
-            />
-            <p className="text-xs font-medium text-muted-foreground">{weekdayName(date)}</p>
-          </div>
+          {(!linked || id) && (
+            <>
+              <div className="space-y-1.5">
+                <Label htmlFor="date">Date</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="h-12"
+                />
+                <p className="text-xs font-medium text-muted-foreground">{weekdayName(date)}</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="time">Time</Label>
+                <Input
+                  id="time"
+                  type="time"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  className="h-12"
+                />
+              </div>
+            </>
+          )}
 
           <div className="space-y-1.5">
-            <Label htmlFor="time">Time</Label>
-            <Input id="time" type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-12" />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="note">Note</Label>
+            <Label htmlFor="note">Name</Label>
             <Input
               id="note"
               value={description}
@@ -303,7 +313,7 @@ function AddEntry() {
             disabled={save.isPending}
           >
             {save.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-            {id ? "Save changes" : "Add entry"}
+            {id ? "Save changes" : linked ? "Save entry" : "Add entry"}
           </Button>
         </form>
       </div>
