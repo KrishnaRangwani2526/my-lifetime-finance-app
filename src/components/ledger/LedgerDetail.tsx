@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, Loader2, Plus, RotateCcw } from "lucide-react";
+import { ChevronLeft, Loader2, Plus, ReceiptCheck, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ import {
   useCategories,
   useEmis,
   useResetBalance,
+  useSaveRow,
   useTransactions,
 } from "@/hooks/useLedger";
 import {
@@ -33,11 +34,15 @@ import {
   formatExactDate,
   formatMonthLabel,
   formatMoney,
+  formatMonthLabel,
+  localTimeInput,
+  monthKey,
   num,
   todayISO,
 } from "@/lib/finance";
 import { isStatementRow } from "@/lib/ledgerCsv";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/AppShell";
 
 export function LedgerDetail({
   linkedType,
@@ -111,6 +116,7 @@ export function LedgerDetail({
             <h1 className="truncate font-display text-lg font-semibold">{name}</h1>
             <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
           </div>
+          <ThemeToggle />
           {editSheet}
         </div>
 
@@ -131,6 +137,14 @@ export function LedgerDetail({
             ownerLabel={name}
             currency={currency}
           />
+          {linkedType === "card" && (
+            <BillPaidSheet
+              cardId={linkedId}
+              cardName={name}
+              currency={currency}
+              amount={Math.max(balance, 0)}
+            />
+          )}
           <EmiSheet linkedType={linkedType} linkedId={linkedId} ownerLabel={name} />
           <ImportStatementSheet
             linkedType={linkedType}
@@ -237,6 +251,94 @@ export function LedgerDetail({
         )}
       </div>
     </div>
+  );
+}
+
+function BillPaidSheet({
+  cardId,
+  cardName,
+  currency,
+  amount,
+}: {
+  cardId: string;
+  cardName: string;
+  currency: string;
+  amount: number;
+}) {
+  const save = useSaveRow("transactions");
+  const [open, setOpen] = useState(false);
+  const [paidAmount, setPaidAmount] = useState(String(amount));
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    const value = Number(paidAmount);
+    if (!Number.isFinite(value) || value <= 0) {
+      toast.error("Enter the bill amount paid");
+      return;
+    }
+    const date = todayISO();
+    try {
+      await save.mutateAsync({
+        values: {
+          linked_type: "card",
+          linked_id: cardId,
+          amount: value,
+          direction: "credit",
+          txn_date: date,
+          created_at: `${date}T${localTimeInput()}:00`,
+          description: `Bill paid · ${formatMonthLabel(monthKey(date))}`,
+          source: "manual",
+        },
+      });
+      toast.success(`${cardName} bill marked paid`);
+      setOpen(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not mark bill paid");
+    }
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button
+          type="button"
+          variant="secondary"
+          className="h-11 w-full justify-center gap-2 rounded-2xl"
+          disabled={amount <= 0}
+          onClick={() => setPaidAmount(String(amount))}
+        >
+          <ReceiptCheck className="size-4" />
+          {amount > 0 ? "Bill paid" : "No bill due"}
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="bottom" className="rounded-t-3xl">
+        <SheetHeader>
+          <SheetTitle>Pay {cardName} bill</SheetTitle>
+          <SheetDescription>
+            Record this month&apos;s payment against the card. It will reduce the card outstanding.
+          </SheetDescription>
+        </SheetHeader>
+        <form onSubmit={submit} className="space-y-4 pt-2">
+          <div className="space-y-1.5">
+            <Label htmlFor={`bill-paid-${cardId}`}>Amount paid</Label>
+            <Input
+              id={`bill-paid-${cardId}`}
+              value={paidAmount}
+              onChange={(event) => setPaidAmount(event.target.value.replace(/[^0-9.]/g, ""))}
+              inputMode="decimal"
+              className="numeric h-12"
+            />
+            <p className="numeric text-xs text-muted-foreground">
+              Current outstanding: {formatMoney(amount, currency)}
+            </p>
+          </div>
+          <Button type="submit" className="w-full rounded-full" disabled={save.isPending}>
+            {save.isPending && <Loader2 className="size-4 animate-spin" />}
+            Confirm bill paid
+          </Button>
+        </form>
+      </SheetContent>
+    </Sheet>
   );
 }
 
