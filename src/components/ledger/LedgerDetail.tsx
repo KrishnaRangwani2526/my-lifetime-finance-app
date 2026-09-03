@@ -98,6 +98,14 @@ export function LedgerDetail({
 
   const myEmis = emis.filter((e) => e.linked_id === linkedId);
   const anchor = latestAnchor(anchors, linkedId);
+  const billPaidThisMonth =
+    linkedType === "card" &&
+    txns.some(
+      (txn) =>
+        txn.direction === "credit" &&
+        txn.description?.startsWith("Bill paid ·") &&
+        txn.txn_date.slice(0, 7) === monthKey(todayISO()),
+    );
 
   return (
     <div className="min-h-dvh bg-background">
@@ -143,6 +151,7 @@ export function LedgerDetail({
               cardName={name}
               currency={currency}
               amount={Math.max(balance, 0)}
+              alreadyPaid={billPaidThisMonth}
             />
           )}
           <EmiSheet linkedType={linkedType} linkedId={linkedId} ownerLabel={name} />
@@ -259,11 +268,13 @@ function BillPaidSheet({
   cardName,
   currency,
   amount,
+  alreadyPaid,
 }: {
   cardId: string;
   cardName: string;
   currency: string;
   amount: number;
+  alreadyPaid: boolean;
 }) {
   const save = useSaveRow("transactions");
   const [open, setOpen] = useState(false);
@@ -304,11 +315,11 @@ function BillPaidSheet({
           type="button"
           variant="secondary"
           className="h-11 w-full justify-center gap-2 rounded-2xl"
-          disabled={amount <= 0}
+          disabled={amount <= 0 || alreadyPaid}
           onClick={() => setPaidAmount(String(amount))}
         >
           <ReceiptCheck className="size-4" />
-          {amount > 0 ? "Bill paid" : "No bill due"}
+          {alreadyPaid ? "Bill paid this month" : amount > 0 ? "Bill paid" : "No bill due"}
         </Button>
       </SheetTrigger>
       <SheetContent side="bottom" className="rounded-t-3xl">
