@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, Loader2, Plus, ReceiptCheck, RotateCcw } from "lucide-react";
+import { ChevronLeft, Loader2, Plus, ReceiptText, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,6 @@ import {
   formatExactDate,
   formatMonthLabel,
   formatMoney,
-  formatMonthLabel,
   localTimeInput,
   monthKey,
   num,
@@ -318,7 +317,7 @@ function BillPaidSheet({
           disabled={amount <= 0 || alreadyPaid}
           onClick={() => setPaidAmount(String(amount))}
         >
-          <ReceiptCheck className="size-4" />
+          <ReceiptText className="size-4" />
           {alreadyPaid ? "Bill paid this month" : amount > 0 ? "Bill paid" : "No bill due"}
         </Button>
       </SheetTrigger>

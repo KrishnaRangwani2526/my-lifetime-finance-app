@@ -260,6 +260,7 @@ function Dashboard() {
         <StartNewMonthSheet
           accounts={accounts}
           cards={cards}
+          anchors={anchors}
           transactions={txns}
           categories={categories}
           currency={currency}
