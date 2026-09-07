@@ -20,6 +20,7 @@ import { ImportStatementSheet } from "@/components/ledger/ImportStatementSheet";
 import { PeriodPanel } from "@/components/ledger/PeriodPanel";
 import { QuickEntrySheet } from "@/components/ledger/QuickEntrySheet";
 import { TransactionRow } from "@/components/ledger/TransactionRow";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   latestAnchor,
   useAnchors,
@@ -71,6 +72,7 @@ export function LedgerDetail({
   const { data: emis = [] } = useEmis();
   const { data: anchors = [] } = useAnchors();
   const [tab, setTab] = useState<"all" | "app" | "statement">("all");
+  const [monthFilter, setMonthFilter] = useState("all");
 
   const txns = useMemo(
     () => allTxns.filter((t) => t.linked_id === linkedId),
@@ -80,17 +82,25 @@ export function LedgerDetail({
   const shown = txns.filter((t) =>
     tab === "all" ? true : tab === "statement" ? isStatementRow(t) : !isStatementRow(t),
   );
+  const months = useMemo(
+    () => [...new Set(shown.map((t) => monthKey(t.txn_date)))].sort((a, b) => b.localeCompare(a)),
+    [shown],
+  );
+  const filtered = monthFilter === "all" ? shown : shown.filter((t) => monthKey(t.txn_date) === monthFilter);
 
   const grouped = useMemo(() => {
-    const map = new Map<string, typeof shown>();
-    for (const t of shown) {
+    const map = new Map<string, typeof filtered>();
+    for (const t of filtered) {
       const key = t.txn_date.slice(0, 7);
       map.set(key, [...(map.get(key) ?? []), t]);
     }
     return [...map.entries()]
       .map(([month, rows]) => [month, [...rows].sort((a, b) => b.created_at.localeCompare(a.created_at))] as const)
       .sort((a, b) => b[0].localeCompare(a[0]));
-  }, [shown]);
+  }, [filtered]);
+
+  const filteredIn = filtered.filter((t) => t.direction === "credit").reduce((sum, t) => sum + num(t.amount), 0);
+  const filteredOut = filtered.filter((t) => t.direction === "debit").reduce((sum, t) => sum + num(t.amount), 0);
 
   const categoryName = (id: string | null) =>
     categories.find((c) => c.id === id)?.name ?? "Uncategorised";
@@ -232,6 +242,30 @@ export function LedgerDetail({
             </button>
           ))}
         </div>
+
+        {months.length > 0 && (
+          <div className="mt-3 flex items-center gap-2">
+            <Select value={monthFilter} onValueChange={setMonthFilter}>
+              <SelectTrigger className="h-11 flex-1 rounded-2xl bg-background">
+                <SelectValue placeholder="All months" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All months</SelectItem>
+                {months.map((month) => (
+                  <SelectItem key={month} value={month}>
+                    {formatMonthLabel(month)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="shrink-0 text-right text-[11px] text-muted-foreground">
+              <p>{filtered.length} activities</p>
+              <p className="numeric">
+                In {formatMoney(filteredIn, currency)} · Out {formatMoney(filteredOut, currency)}
+              </p>
+            </div>
+          </div>
+        )}
 
         {grouped.length === 0 ? (
           <p className="surface-card mt-3 px-4 py-8 text-center text-sm text-muted-foreground">

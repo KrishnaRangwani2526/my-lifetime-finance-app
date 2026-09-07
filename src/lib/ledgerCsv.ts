@@ -40,7 +40,9 @@ export function txnToRow(t: Transaction, ctx: CsvContext) {
 }
 
 export function buildLedgerCsv(txns: Transaction[], ctx: CsvContext): string {
-  const sorted = [...txns].sort((a, b) => a.txn_date.localeCompare(b.txn_date));
+  const sorted = [...txns].sort(
+    (a, b) => a.txn_date.localeCompare(b.txn_date) || a.created_at.localeCompare(b.created_at),
+  );
   const rows = sorted.map((t) => txnToRow(t, ctx));
   const credit = sorted
     .filter((t) => t.direction === "credit")
@@ -72,7 +74,9 @@ export function buildCumulativeCsv(
   ownerLabel: (t: Transaction) => string,
   ctx: Omit<CsvContext, "ownerLabel">,
 ): string {
-  const sorted = [...txns].sort((a, b) => a.txn_date.localeCompare(b.txn_date));
+  const sorted = [...txns].sort(
+    (a, b) => a.txn_date.localeCompare(b.txn_date) || a.created_at.localeCompare(b.created_at),
+  );
   let running = 0;
   const rows = sorted.map((t) => {
     const signed = t.direction === "credit" ? num(t.amount) : -num(t.amount);

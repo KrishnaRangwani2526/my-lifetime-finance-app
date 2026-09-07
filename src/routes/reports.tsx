@@ -1,10 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Download, TrendingDown, TrendingUp } from "lucide-react";
 import { useMemo, useState } from "react";
-import { TrendingDown, TrendingUp } from "lucide-react";
+import { toast } from "sonner";
 import { RequireAuth } from "@/components/RequireAuth";
 import { MobileScreen, ScreenHeader } from "@/components/AppShell";
-import { useCategories, useProfile, useTransactions } from "@/hooks/useLedger";
-import { formatMoney, monthLabel, num } from "@/lib/finance";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  useAccounts,
+  useCards,
+  useCategories,
+  usePeriods,
+  useProfile,
+  useTransactions,
+} from "@/hooks/useLedger";
+import { formatMoney, formatMonthLabel, monthLabel, num, type Transaction } from "@/lib/finance";
+import { buildCumulativeCsv, buildLedgerCsv } from "@/lib/ledgerCsv";
+import { downloadText, safeFileName } from "@/lib/csv";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/reports")({
@@ -13,12 +25,12 @@ export const Route = createFileRoute("/reports")({
       { title: "Reports — MyLedger" },
       {
         name: "description",
-        content: "Month-by-month trends and a category breakdown of where your money actually goes.",
+        content: "Month-by-month trends, exact activity and downloadable ledgers for every account and card.",
       },
       { property: "og:title", content: "Reports — MyLedger" },
       {
         property: "og:description",
-        content: "Month-by-month trends and a category breakdown of where your money actually goes.",
+        content: "Month-by-month trends, exact activity and downloadable ledgers for every account and card.",
       },
     ],
   }),
@@ -32,9 +44,30 @@ export const Route = createFileRoute("/reports")({
 function Reports() {
   const { data: profile } = useProfile();
   const { data: txns = [] } = useTransactions();
+  const { data: accounts = [] } = useAccounts();
+  const { data: cards = [] } = useCards();
   const { data: categories = [] } = useCategories();
+  const { data: periods = [] } = usePeriods();
   const [range, setRange] = useState<3 | 6 | 12>(6);
+  const [assetFilter, setAssetFilter] = useState("all");
+  const [monthFilter, setMonthFilter] = useState("all");
   const currency = profile?.currency ?? "INR";
+
+  const assetLabels = useMemo(() => {
+    const labels = new Map<string, string>();
+    for (const account of accounts) labels.set(account.id, account.name);
+    for (const card of cards) labels.set(card.id, card.name);
+    return labels;
+  }, [accounts, cards]);
+
+  const reportMonths = useMemo(() => {
+    const keys = new Set(txns.map((t) => t.txn_date.slice(0, 7)));
+    for (const period of periods) {
+      keys.add(period.period_start.slice(0, 7));
+      keys.add(period.period_end.slice(0, 7));
+    }
+    return [...keys].sort((a, b) => b.localeCompare(a));
+  }, [periods, txns]);
 
   const months = useMemo(() => {
     const list: { key: string; label: string; income: number; spend: number }[] = [];
@@ -79,9 +112,41 @@ function Reports() {
       .sort((a, b) => b.total - a.total);
   }, [inWindow, categories]);
 
+  const reportRows = useMemo(() => {
+    const rows = txns.filter(
+      (t) =>
+        (assetFilter === "all" || t.linked_id === assetFilter) &&
+        (monthFilter === "all" || t.txn_date.startsWith(monthFilter)),
+    );
+    return [...rows].sort(
+      (a, b) => b.txn_date.localeCompare(a.txn_date) || b.created_at.localeCompare(a.created_at),
+    );
+  }, [assetFilter, monthFilter, txns]);
+
+  const categoryName = (id: string | null) => categories.find((c) => c.id === id)?.name ?? "Uncategorised";
+  const selectedAsset = assetLabels.get(assetFilter) ?? "All assets";
+
+  function downloadReport() {
+    if (reportRows.length === 0) {
+      toast.error("There is no activity for this selection");
+      return;
+    }
+    const suffix = monthFilter === "all" ? "all-months" : monthFilter;
+    const filename = `mylegder-${safeFileName(selectedAsset)}-${suffix}.csv`;
+    const content =
+      assetFilter === "all"
+        ? buildCumulativeCsv(reportRows, (t) => assetLabels.get(t.linked_id ?? "") ?? "Unlinked", {
+            currency,
+            categoryName,
+          })
+        : buildLedgerCsv(reportRows, { currency, ownerLabel: selectedAsset, categoryName });
+    downloadText(filename, content);
+    toast.success("CSV downloaded");
+  }
+
   return (
     <MobileScreen>
-      <ScreenHeader title="Reports" subtitle="Where your money goes" />
+      <ScreenHeader title="Reports" subtitle="Exact history, month by month" />
 
       <div className="mb-4 grid grid-cols-3 gap-1 rounded-full bg-secondary p-1">
         {([3, 6, 12] as const).map((r) => (
@@ -103,17 +168,13 @@ function Reports() {
           <div className="mb-1 flex items-center gap-1.5 text-xs text-muted-foreground">
             <TrendingUp className="size-3.5 text-credit" /> Total in
           </div>
-          <p className="numeric font-display text-lg font-semibold text-credit">
-            {formatMoney(totalIncome, currency, true)}
-          </p>
+          <p className="numeric font-display text-lg font-semibold text-credit">{formatMoney(totalIncome, currency)}</p>
         </div>
         <div className="surface-card p-4">
           <div className="mb-1 flex items-center gap-1.5 text-xs text-muted-foreground">
             <TrendingDown className="size-3.5 text-debit" /> Total out
           </div>
-          <p className="numeric font-display text-lg font-semibold text-debit">
-            {formatMoney(totalSpend, currency, true)}
-          </p>
+          <p className="numeric font-display text-lg font-semibold text-debit">{formatMoney(totalSpend, currency)}</p>
         </div>
       </div>
 
@@ -139,21 +200,15 @@ function Reports() {
           ))}
         </div>
         <div className="mt-3 flex justify-center gap-4 text-[11px] text-muted-foreground">
-          <span className="flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-credit" /> Money in
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-debit" /> Money out
-          </span>
+          <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-credit" /> Money in</span>
+          <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-debit" /> Money out</span>
         </div>
       </section>
 
       <section className="surface-card mt-4 divide-y divide-border overflow-hidden">
         <h2 className="px-4 pb-3 pt-4 font-display text-sm font-semibold">Spend by category</h2>
         {byCategory.length === 0 ? (
-          <p className="px-4 py-6 text-center text-sm text-muted-foreground">
-            No spending recorded in this range.
-          </p>
+          <p className="px-4 py-6 text-center text-sm text-muted-foreground">No spending recorded in this range.</p>
         ) : (
           byCategory.map((c) => {
             const pct = totalSpend > 0 ? (c.total / totalSpend) * 100 : 0;
@@ -161,22 +216,88 @@ function Reports() {
               <div key={c.id} className="px-4 py-3">
                 <div className="mb-1.5 flex justify-between text-sm">
                   <span className="truncate font-medium">{c.name}</span>
-                  <span className="numeric shrink-0 pl-2">
-                    {formatMoney(c.total, currency, true)}
-                  </span>
+                  <span className="numeric shrink-0 pl-2">{formatMoney(c.total, currency)}</span>
                 </div>
                 <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
-                  <span
-                    className="block h-full rounded-full bg-primary"
-                    style={{ width: `${pct}%` }}
-                  />
+                  <span className="block h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
                 </div>
-                <p className="mt-1 text-[11px] text-muted-foreground">{pct.toFixed(0)}% of spend</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">{pct.toFixed(2)}% of spend</p>
               </div>
             );
           })
         )}
       </section>
+
+      <section className="surface-card mt-4 overflow-hidden">
+        <div className="border-b border-border px-4 pb-3 pt-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="font-display text-sm font-semibold">Activity archive</h2>
+              <p className="mt-1 text-xs text-muted-foreground">Every amount stays exact. Choose a month to view or save.</p>
+            </div>
+            <Button type="button" size="icon" variant="outline" aria-label="Download activity CSV" title="Download activity CSV" onClick={downloadReport}>
+              <Download className="size-4" />
+            </Button>
+          </div>
+          <div className="mt-3 grid gap-2">
+            <Select value={assetFilter} onValueChange={setAssetFilter}>
+              <SelectTrigger className="h-11 rounded-2xl bg-background"><SelectValue placeholder="All accounts and cards" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All accounts and cards</SelectItem>
+                {accounts.map((account) => <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>)}
+                {cards.map((card) => <SelectItem key={card.id} value={card.id}>{card.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={monthFilter} onValueChange={setMonthFilter}>
+              <SelectTrigger className="h-11 rounded-2xl bg-background"><SelectValue placeholder="All months" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All months</SelectItem>
+                {reportMonths.map((month) => <SelectItem key={month} value={month}>{formatMonthLabel(month)}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+            <span>{selectedAsset} · {monthFilter === "all" ? "All months" : formatMonthLabel(monthFilter)}</span>
+            <span className="numeric">{reportRows.length} rows</span>
+          </div>
+        </div>
+        {reportRows.length === 0 ? (
+          <p className="px-4 py-8 text-center text-sm text-muted-foreground">No activity for this selection.</p>
+        ) : (
+          <div className="divide-y divide-border">
+            {reportRows.map((txn) => <ReportRow key={txn.id} txn={txn} currency={currency} categoryName={categoryName(txn.category_id)} assetName={assetLabels.get(txn.linked_id ?? "")} />)}
+          </div>
+        )}
+      </section>
     </MobileScreen>
+  );
+}
+
+function ReportRow({
+  txn,
+  currency,
+  categoryName,
+  assetName,
+}: {
+  txn: Transaction;
+  currency: string;
+  categoryName: string;
+  assetName?: string;
+}) {
+  const credit = txn.direction === "credit";
+  return (
+    <div className="flex items-center gap-3 px-4 py-3">
+      <div className={cn("size-2 shrink-0 rounded-full", credit ? "bg-credit" : "bg-debit")} />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{txn.description || txn.merchant || categoryName || "Activity"}</p>
+        <p className="truncate text-[11px] text-muted-foreground">{txn.txn_date} · {assetName ?? "Unlinked"} · {categoryName}</p>
+      </div>
+      <div className="text-right">
+        <p className={cn("numeric text-sm font-semibold", credit ? "text-credit" : "text-debit")}>
+          {credit ? "+" : "−"}{formatMoney(num(txn.amount), currency)}
+        </p>
+        <p className="text-[11px] text-muted-foreground">{new Date(txn.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</p>
+      </div>
+    </div>
   );
 }
