@@ -265,7 +265,7 @@ function Reports() {
           <p className="px-4 py-8 text-center text-sm text-muted-foreground">No activity for this selection.</p>
         ) : (
           <div className="divide-y divide-border">
-            {reportRows.map((txn) => <ReportRow key={txn.id} txn={txn} currency={currency} categoryName={categoryName(txn.category_id)} assetName={assetLabels.get(txn.linked_id ?? "")} />)}
+            {reportRows.map((txn) => <ReportRow key={txn.id} txn={txn} currency={currency} categoryName={categoryName(txn.category_id)} assetName={assetLabels.get(txn.linked_id ?? "") ?? "Unlinked"} />)}
           </div>
         )}
       </section>
@@ -282,7 +282,7 @@ function ReportRow({
   txn: Transaction;
   currency: string;
   categoryName: string;
-  assetName?: string;
+  assetName: string;
 }) {
   const credit = txn.direction === "credit";
   return (
@@ -290,7 +290,7 @@ function ReportRow({
       <div className={cn("size-2 shrink-0 rounded-full", credit ? "bg-credit" : "bg-debit")} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{txn.description || txn.merchant || categoryName || "Activity"}</p>
-        <p className="truncate text-[11px] text-muted-foreground">{txn.txn_date} · {assetName ?? "Unlinked"} · {categoryName}</p>
+        <p className="truncate text-[11px] text-muted-foreground">{txn.txn_date} · {assetName} · {categoryName}</p>
       </div>
       <div className="text-right">
         <p className={cn("numeric text-sm font-semibold", credit ? "text-credit" : "text-debit")}>
