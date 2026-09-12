@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
+import { ThemeBootstrap } from "@/components/AppShell";
 
 function NotFoundComponent() {
   return (
@@ -124,6 +125,12 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              'try { document.documentElement.classList.toggle("dark", window.localStorage.getItem("mledger-theme") === "dark"); } catch {}',
+          }}
+        />
         <HeadContent />
       </head>
       <body>
@@ -139,6 +146,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+        <ThemeBootstrap />
       <AuthProvider>
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />

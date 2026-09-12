@@ -123,6 +123,32 @@ function Reports() {
     );
   }, [assetFilter, monthFilter, txns]);
 
+  const reportTotals = useMemo(() => {
+    const income = reportRows
+      .filter((t) => t.direction === "credit")
+      .reduce((sum, t) => sum + num(t.amount), 0);
+    const spend = reportRows
+      .filter((t) => t.direction === "debit")
+      .reduce((sum, t) => sum + num(t.amount), 0);
+    return { income, spend, activity: income + spend, net: income - spend };
+  }, [reportRows]);
+
+  const assetBreakdown = useMemo(() => {
+    const map = new Map<string, { name: string; income: number; spend: number }>();
+    for (const txn of reportRows) {
+      const id = txn.linked_id ?? "unlinked";
+      const current = map.get(id) ?? {
+        name: assetLabels.get(id) ?? "Unlinked",
+        income: 0,
+        spend: 0,
+      };
+      if (txn.direction === "credit") current.income += num(txn.amount);
+      else current.spend += num(txn.amount);
+      map.set(id, current);
+    }
+    return [...map.values()].sort((a, b) => (b.income + b.spend) - (a.income + a.spend));
+  }, [assetLabels, reportRows]);
+
   const categoryName = (id: string | null) => categories.find((c) => c.id === id)?.name ?? "Uncategorised";
   const selectedAsset = assetLabels.get(assetFilter) ?? "All assets";
 
@@ -260,6 +286,38 @@ function Reports() {
             <span>{selectedAsset} · {monthFilter === "all" ? "All months" : formatMonthLabel(monthFilter)}</span>
             <span className="numeric">{reportRows.length} rows</span>
           </div>
+          <div className="mt-3 grid grid-cols-3 gap-2 border-t border-border pt-3">
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total activity</p>
+              <p className="numeric mt-1 text-sm font-semibold">{formatMoney(reportTotals.activity, currency)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Money in</p>
+              <p className="numeric mt-1 text-sm font-semibold text-credit">{formatMoney(reportTotals.income, currency)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Money out</p>
+              <p className="numeric mt-1 text-sm font-semibold text-debit">{formatMoney(reportTotals.spend, currency)}</p>
+            </div>
+          </div>
+          {assetBreakdown.length > 1 && (
+            <div className="mt-3 border-t border-border pt-3">
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-xs font-semibold">Totals by account and card</h3>
+                <span className="numeric text-[11px] text-muted-foreground">Net {formatMoney(reportTotals.net, currency)}</span>
+              </div>
+              <div className="space-y-2">
+                {assetBreakdown.map((asset) => (
+                  <div key={asset.name} className="flex items-center justify-between gap-3 text-xs">
+                    <span className="min-w-0 truncate font-medium">{asset.name}</span>
+                    <span className="numeric shrink-0 text-right text-muted-foreground">
+                      Total {formatMoney(asset.income + asset.spend, currency)} · In {formatMoney(asset.income, currency)} · Out {formatMoney(asset.spend, currency)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         {reportRows.length === 0 ? (
           <p className="px-4 py-8 text-center text-sm text-muted-foreground">No activity for this selection.</p>
