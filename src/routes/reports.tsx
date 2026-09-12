@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { RequireAuth } from "@/components/RequireAuth";
 import { MobileScreen, ScreenHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   useAccounts,
@@ -49,7 +50,7 @@ function Reports() {
   const { data: categories = [] } = useCategories();
   const { data: periods = [] } = usePeriods();
   const [range, setRange] = useState<3 | 6 | 12>(6);
-  const [assetFilter, setAssetFilter] = useState("all");
+  const [assetFilter, setAssetFilter] = useState<string[]>([]);
   const [monthFilter, setMonthFilter] = useState("all");
   const currency = profile?.currency ?? "INR";
 
@@ -59,6 +60,14 @@ function Reports() {
     for (const card of cards) labels.set(card.id, card.name);
     return labels;
   }, [accounts, cards]);
+
+  const assetOptions = useMemo(
+    () => [
+      ...accounts.map((account) => ({ id: account.id, name: account.name, type: "Account" })),
+      ...cards.map((card) => ({ id: card.id, name: card.name, type: "Card" })),
+    ],
+    [accounts, cards],
+  );
 
   const reportMonths = useMemo(() => {
     const keys = new Set(txns.map((t) => t.txn_date.slice(0, 7)));
@@ -115,7 +124,7 @@ function Reports() {
   const reportRows = useMemo(() => {
     const rows = txns.filter(
       (t) =>
-        (assetFilter === "all" || t.linked_id === assetFilter) &&
+        (assetFilter.length === 0 || assetFilter.includes(t.linked_id ?? "")) &&
         (monthFilter === "all" || t.txn_date.startsWith(monthFilter)),
     );
     return [...rows].sort(
@@ -150,7 +159,12 @@ function Reports() {
   }, [assetLabels, reportRows]);
 
   const categoryName = (id: string | null) => categories.find((c) => c.id === id)?.name ?? "Uncategorised";
-  const selectedAsset = assetLabels.get(assetFilter) ?? "All assets";
+  const selectedAsset =
+    assetFilter.length === 0
+      ? "All assets"
+      : assetFilter.length === 1
+        ? assetLabels.get(assetFilter[0]) ?? "Selected asset"
+        : `${assetFilter.length} selected assets`;
 
   function downloadReport() {
     if (reportRows.length === 0) {
@@ -158,14 +172,15 @@ function Reports() {
       return;
     }
     const suffix = monthFilter === "all" ? "all-months" : monthFilter;
+    const ownerLabel = assetFilter.length === 1 ? selectedAsset : "selected-assets";
     const filename = `mylegder-${safeFileName(selectedAsset)}-${suffix}.csv`;
     const content =
-      assetFilter === "all"
+      assetFilter.length !== 1
         ? buildCumulativeCsv(reportRows, (t) => assetLabels.get(t.linked_id ?? "") ?? "Unlinked", {
             currency,
             categoryName,
           })
-        : buildLedgerCsv(reportRows, { currency, ownerLabel: selectedAsset, categoryName });
+        : buildLedgerCsv(reportRows, { currency, ownerLabel, categoryName });
     downloadText(filename, content);
     toast.success("CSV downloaded");
   }
@@ -266,14 +281,42 @@ function Reports() {
             </Button>
           </div>
           <div className="mt-3 grid gap-2">
-            <Select value={assetFilter} onValueChange={setAssetFilter}>
-              <SelectTrigger className="h-11 rounded-2xl bg-background"><SelectValue placeholder="All accounts and cards" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All accounts and cards</SelectItem>
-                {accounts.map((account) => <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>)}
-                {cards.map((card) => <SelectItem key={card.id} value={card.id}>{card.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <div className="rounded-2xl border border-border bg-background p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-xs font-semibold">Accounts and cards</p>
+                <p className="text-[11px] text-muted-foreground">Choose one or more</p>
+              </div>
+              <label className="flex cursor-pointer items-center gap-3 rounded-xl px-2 py-2 text-sm hover:bg-secondary">
+                <Checkbox
+                  checked={assetFilter.length === 0}
+                  onCheckedChange={(checked) => {
+                    if (checked) setAssetFilter([]);
+                  }}
+                  aria-label="All accounts and cards"
+                />
+                <span className="font-medium">All accounts and cards</span>
+              </label>
+              <div className="mt-1 grid gap-1 sm:grid-cols-2">
+                {assetOptions.map((asset) => (
+                  <label key={asset.id} className="flex cursor-pointer items-center gap-3 rounded-xl px-2 py-2 text-sm hover:bg-secondary">
+                    <Checkbox
+                      checked={assetFilter.includes(asset.id)}
+                      onCheckedChange={(checked) => {
+                        setAssetFilter((current) => {
+                          if (checked) return [...new Set([...current, asset.id])];
+                          return current.filter((id) => id !== asset.id);
+                        });
+                      }}
+                      aria-label={`Select ${asset.name}`}
+                    />
+                    <span className="min-w-0 truncate">
+                      <span className="block truncate font-medium">{asset.name}</span>
+                      <span className="block text-[11px] text-muted-foreground">{asset.type}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
             <Select value={monthFilter} onValueChange={setMonthFilter}>
               <SelectTrigger className="h-11 rounded-2xl bg-background"><SelectValue placeholder="All months" /></SelectTrigger>
               <SelectContent>
@@ -300,7 +343,7 @@ function Reports() {
               <p className="numeric mt-1 text-sm font-semibold text-debit">{formatMoney(reportTotals.spend, currency)}</p>
             </div>
           </div>
-          {assetBreakdown.length > 1 && (
+          {assetBreakdown.length > 0 && (
             <div className="mt-3 border-t border-border pt-3">
               <div className="mb-2 flex items-center justify-between">
                 <h3 className="text-xs font-semibold">Totals by account and card</h3>
