@@ -137,17 +137,16 @@ export function ThemeToggle() {
   const [dark, setDark] = useState(false);
 
   useEffect(() => {
-    const saved = window.localStorage.getItem("mledger-theme");
-    const isDark = saved === "dark";
+    const isDark = readThemePreference();
     setDark(isDark);
-    document.documentElement.classList.toggle("dark", isDark);
+    applyTheme(isDark);
   }, []);
 
   function toggle() {
     const next = !dark;
     setDark(next);
     window.localStorage.setItem("mledger-theme", next ? "dark" : "light");
-    document.documentElement.classList.toggle("dark", next);
+    applyTheme(next);
   }
 
   return (
@@ -163,6 +162,27 @@ export function ThemeToggle() {
       {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
     </Button>
   );
+}
+
+function readThemePreference(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem("mledger-theme") === "dark";
+  } catch {
+    return false;
+  }
+}
+
+function applyTheme(isDark: boolean) {
+  document.documentElement.classList.toggle("dark", isDark);
+}
+
+/** Applies the saved appearance once at the app root, including pages without a header toggle. */
+export function ThemeBootstrap() {
+  useEffect(() => {
+    applyTheme(readThemePreference());
+  }, []);
+  return null;
 }
 
 export function EmptyState({

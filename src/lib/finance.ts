@@ -29,9 +29,9 @@ export function formatMoney(value: number, code = "INR", compact = false): strin
   return new Intl.NumberFormat(meta.locale, {
     style: "currency",
     currency: meta.code,
-    maximumFractionDigits: compact ? 1 : 2,
-    minimumFractionDigits: compact ? 0 : 2,
-    notation: compact ? "compact" : "standard",
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
+    notation: "standard",
   }).format(value);
 }
 
