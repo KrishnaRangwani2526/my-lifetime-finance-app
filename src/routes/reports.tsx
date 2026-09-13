@@ -163,7 +163,7 @@ function Reports() {
     assetFilter.length === 0
       ? "All assets"
       : assetFilter.length === 1
-        ? assetLabels.get(assetFilter[0]) ?? "Selected asset"
+        ? assetLabels.get(assetFilter[0] ?? "") ?? "Selected asset"
         : `${assetFilter.length} selected assets`;
 
   function downloadReport() {
