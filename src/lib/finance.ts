@@ -45,6 +45,19 @@ export function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/** Returns true when a ledger date is later than today. */
+export function isFutureDate(iso: string): boolean {
+  return Boolean(iso) && iso > todayISO();
+}
+
+/** Returns true when a ledger date and local time are later than this moment. */
+export function isFutureDateTime(iso: string, time: string, now = new Date()): boolean {
+  if (isFutureDate(iso)) return true;
+  if (iso !== todayISO() || !time) return false;
+  const candidate = new Date(`${iso}T${time.length === 5 ? `${time}:00` : time}`);
+  return !Number.isNaN(candidate.getTime()) && candidate.getTime() > now.getTime();
+}
+
 export function monthStartISO(offset = 0): string {
   const d = new Date();
   d.setDate(1);

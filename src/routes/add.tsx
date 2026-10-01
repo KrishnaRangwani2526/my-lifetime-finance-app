@@ -12,7 +12,15 @@ import {
   useSaveRow,
   useTransactions,
 } from "@/hooks/useLedger";
-import { currencyMeta, localTimeInput, num, todayISO, weekdayName, type Direction } from "@/lib/finance";
+import {
+  currencyMeta,
+  isFutureDateTime,
+  localTimeInput,
+  num,
+  todayISO,
+  weekdayName,
+  type Direction,
+} from "@/lib/finance";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -111,6 +119,10 @@ function AddEntry() {
     }
     if (!target) {
       toast.error("Add an account or card first");
+      return;
+    }
+    if (isFutureDateTime(date, time)) {
+      toast.error("Entries can only be recorded today or earlier");
       return;
     }
     const [linkedType, linkedId] = target.split(":");
@@ -264,6 +276,7 @@ function AddEntry() {
                   id="date"
                   type="date"
                   value={date}
+                  max={todayISO()}
                   onChange={(e) => setDate(e.target.value)}
                   className="h-12"
                 />

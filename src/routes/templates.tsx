@@ -13,7 +13,7 @@ import {
   useSaveRow,
   useTemplates,
 } from "@/hooks/useLedger";
-import { formatMoney, localTimeInput, num, todayISO, weekdayName } from "@/lib/finance";
+import { formatMoney, isFutureDateTime, localTimeInput, num, todayISO, weekdayName } from "@/lib/finance";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -110,6 +110,10 @@ function Templates() {
   async function run(id: string) {
     const tpl = templates.find((t) => t.id === id);
     if (!tpl) return;
+    if (isFutureDateTime(date, time)) {
+      toast.error("Entries can only be recorded today or earlier");
+      return;
+    }
     await saveTxn.mutateAsync({
       values: {
         linked_type: tpl.linked_type,
@@ -231,6 +235,7 @@ function Templates() {
               id="quick-date"
               type="date"
               value={date}
+               max={todayISO()}
               onChange={(event) => setDate(event.target.value)}
               className="mt-1.5 h-11"
             />

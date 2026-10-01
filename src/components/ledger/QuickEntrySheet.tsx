@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCategories, useSaveRow, useTemplates } from "@/hooks/useLedger";
-import { formatMoney, localTimeInput, num, todayISO, weekdayName } from "@/lib/finance";
+import { formatMoney, isFutureDateTime, localTimeInput, num, todayISO, weekdayName } from "@/lib/finance";
 import { cn } from "@/lib/utils";
 
 /**
@@ -58,6 +58,10 @@ export function QuickEntrySheet({
   async function run(id: string) {
     const tpl = mine.find((t) => t.id === id);
     if (!tpl) return;
+    if (isFutureDateTime(date, time)) {
+      toast.error("Entries can only be recorded today or earlier");
+      return;
+    }
     await saveTxn.mutateAsync({
       values: {
         linked_type: linkedType,
@@ -82,6 +86,10 @@ export function QuickEntrySheet({
       toast.error("Add a name and amount");
       return;
     }
+    if (isFutureDateTime(date, time)) {
+      toast.error("Entries can only be recorded today or earlier");
+      return;
+    }
     try {
       await saveTpl.mutateAsync({
         values: {
@@ -102,6 +110,7 @@ export function QuickEntrySheet({
           amount: value,
           direction,
           txn_date: date,
+          created_at: `${date}T${time}:00`,
           category_id: categoryId || null,
           description: name.trim(),
           source: "template",
@@ -138,6 +147,7 @@ export function QuickEntrySheet({
               id={`qe-date-${linkedId}`}
               type="date"
               value={date}
+               max={todayISO()}
               onChange={(event) => setDate(event.target.value)}
               className="h-11"
             />
