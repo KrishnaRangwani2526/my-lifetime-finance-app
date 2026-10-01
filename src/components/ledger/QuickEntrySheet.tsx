@@ -110,6 +110,7 @@ export function QuickEntrySheet({
           amount: value,
           direction,
           txn_date: date,
+          created_at: `${date}T${time}:00`,
           category_id: categoryId || null,
           description: name.trim(),
           source: "template",

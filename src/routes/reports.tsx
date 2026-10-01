@@ -162,19 +162,20 @@ function Reports() {
   const paymentSummary = useMemo(() => {
     const grouped = new Map<
       string,
-      { label: string; amount: number; direction: Transaction["direction"]; count: number; total: number; asset: string }
+      { label: string; amount: number; direction: Transaction["direction"]; count: number; total: number; assets: Set<string> }
     >();
     for (const txn of reportRows) {
       const amount = num(txn.amount);
       const label = txn.description?.trim() || txn.merchant?.trim() || "Unnamed payment";
       const asset = assetLabels.get(txn.linked_id ?? "") ?? "Unlinked";
-      const key = [txn.linked_id ?? "unlinked", txn.direction, label.toLocaleLowerCase(), amount.toFixed(2)].join("|");
+      const key = [txn.direction, label.toLocaleLowerCase(), amount.toFixed(2)].join("|");
       const current = grouped.get(key);
       if (current) {
         current.count += 1;
         current.total += amount;
+        current.assets.add(asset);
       } else {
-        grouped.set(key, { label, amount, direction: txn.direction, count: 1, total: amount, asset });
+        grouped.set(key, { label, amount, direction: txn.direction, count: 1, total: amount, assets: new Set([asset]) });
       }
     }
     return [...grouped.values()].sort((a, b) => b.total - a.total || b.count - a.count);
@@ -373,11 +374,11 @@ function Reports() {
               ) : (
                 <div className="divide-y divide-border rounded-2xl border border-border">
                   {paymentSummary.map((payment) => (
-                    <div key={`${payment.asset}-${payment.label}-${payment.amount}-${payment.direction}`} className="space-y-1.5 px-3 py-3">
+                    <div key={`${payment.label}-${payment.amount}-${payment.direction}`} className="space-y-1.5 px-3 py-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium">{payment.label}</p>
-                          <p className="truncate text-[11px] text-muted-foreground">{payment.asset}</p>
+                          <p className="truncate text-[11px] text-muted-foreground">{[...payment.assets].join(" · ")}</p>
                         </div>
                         <p className={cn("numeric shrink-0 text-sm font-semibold", payment.direction === "credit" ? "text-credit" : "text-debit")}>
                           {payment.direction === "credit" ? "+" : "−"}{formatMoney(payment.total, currency)}
