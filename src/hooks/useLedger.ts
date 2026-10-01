@@ -12,6 +12,7 @@ import type {
   Template,
   Transaction,
 } from "@/lib/finance";
+import { isFutureDate, isFutureDateTime } from "@/lib/finance";
 
 const LEDGER_TABLES = [
   "transactions",
@@ -125,6 +126,15 @@ export function useSaveRow<T extends Record<string, unknown>>(table: LedgerTable
   return useMutation({
     mutationFn: async ({ id, values }: { id?: string; values: T }) => {
       if (!scopeUserId) throw new Error("Not signed in");
+      if (table === "transactions") {
+        const txnDate = typeof values.txn_date === "string" ? values.txn_date : "";
+        const createdAt = typeof values.created_at === "string" ? values.created_at : "";
+        const createdDate = createdAt.slice(0, 10);
+        const createdTime = createdAt.includes("T") ? createdAt.slice(11, 16) : "";
+        if (isFutureDate(txnDate) || (createdAt && isFutureDateTime(createdDate, createdTime))) {
+          throw new Error("Entries can only be recorded today or earlier");
+        }
+      }
       // Column shapes differ per table; the caller owns the field contract.
       const writer = supabase.from(table) as unknown as {
         update: (v: unknown) => {
@@ -430,6 +440,9 @@ export function useBulkInsertTransactions() {
   return useMutation({
     mutationFn: async (rows: BulkTxn[]) => {
       if (!scopeUserId) throw new Error("Not signed in");
+      if (rows.some((row) => isFutureDate(row.txn_date))) {
+        throw new Error("Statements cannot contain future-dated entries");
+      }
       const stamped = rows.map((r) => ({ ...r, user_id: scopeUserId }));
       for (let i = 0; i < stamped.length; i += 200) {
         const { error } = await supabase.from("transactions").insert(stamped.slice(i, i + 200));

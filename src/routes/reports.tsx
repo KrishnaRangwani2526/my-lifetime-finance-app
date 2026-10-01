@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Download, TrendingDown, TrendingUp } from "lucide-react";
+import { Download, ListFilter, TrendingDown, TrendingUp } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { RequireAuth } from "@/components/RequireAuth";
@@ -52,6 +52,7 @@ function Reports() {
   const [range, setRange] = useState<3 | 6 | 12>(6);
   const [assetFilter, setAssetFilter] = useState<string[]>([]);
   const [monthFilter, setMonthFilter] = useState("all");
+  const [showPaymentSummary, setShowPaymentSummary] = useState(false);
   const currency = profile?.currency ?? "INR";
 
   const assetLabels = useMemo(() => {
@@ -156,6 +157,27 @@ function Reports() {
       map.set(id, current);
     }
     return [...map.values()].sort((a, b) => (b.income + b.spend) - (a.income + a.spend));
+  }, [assetLabels, reportRows]);
+
+  const paymentSummary = useMemo(() => {
+    const grouped = new Map<
+      string,
+      { label: string; amount: number; direction: Transaction["direction"]; count: number; total: number; asset: string }
+    >();
+    for (const txn of reportRows) {
+      const amount = num(txn.amount);
+      const label = txn.description?.trim() || txn.merchant?.trim() || "Unnamed payment";
+      const asset = assetLabels.get(txn.linked_id ?? "") ?? "Unlinked";
+      const key = [txn.linked_id ?? "unlinked", txn.direction, label.toLocaleLowerCase(), amount.toFixed(2)].join("|");
+      const current = grouped.get(key);
+      if (current) {
+        current.count += 1;
+        current.total += amount;
+      } else {
+        grouped.set(key, { label, amount, direction: txn.direction, count: 1, total: amount, asset });
+      }
+    }
+    return [...grouped.values()].sort((a, b) => b.total - a.total || b.count - a.count);
   }, [assetLabels, reportRows]);
 
   const categoryName = (id: string | null) => categories.find((c) => c.id === id)?.name ?? "Uncategorised";
@@ -329,6 +351,49 @@ function Reports() {
             <span>{selectedAsset} · {monthFilter === "all" ? "All months" : formatMonthLabel(monthFilter)}</span>
             <span className="numeric">{reportRows.length} rows</span>
           </div>
+          <Button
+            type="button"
+            variant={showPaymentSummary ? "secondary" : "outline"}
+            className="mt-3 h-10 w-full justify-center gap-2 rounded-2xl"
+            onClick={() => setShowPaymentSummary((visible) => !visible)}
+          >
+            <ListFilter className="size-4" />
+            {showPaymentSummary ? "Hide payment summary" : "Show payment summary"}
+          </Button>
+          {showPaymentSummary && (
+            <div className="mt-3 border-t border-border pt-3">
+              <div className="mb-2">
+                <h3 className="text-xs font-semibold">Repeated payments</h3>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Matching payment name, amount and account are grouped for this filter.
+                </p>
+              </div>
+              {paymentSummary.length === 0 ? (
+                <p className="py-4 text-center text-sm text-muted-foreground">No payments for this selection.</p>
+              ) : (
+                <div className="divide-y divide-border rounded-2xl border border-border">
+                  {paymentSummary.map((payment) => (
+                    <div key={`${payment.asset}-${payment.label}-${payment.amount}-${payment.direction}`} className="space-y-1.5 px-3 py-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">{payment.label}</p>
+                          <p className="truncate text-[11px] text-muted-foreground">{payment.asset}</p>
+                        </div>
+                        <p className={cn("numeric shrink-0 text-sm font-semibold", payment.direction === "credit" ? "text-credit" : "text-debit")}>
+                          {payment.direction === "credit" ? "+" : "−"}{formatMoney(payment.total, currency)}
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-[11px] text-muted-foreground">
+                        <span>Frequency <strong className="numeric text-foreground">{payment.count}×</strong></span>
+                        <span>Per payment <strong className="numeric text-foreground">{formatMoney(payment.amount, currency)}</strong></span>
+                        <span className="text-right">Complete total <strong className="numeric text-foreground">{formatMoney(payment.total, currency)}</strong></span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <div className="mt-3 grid grid-cols-3 gap-2 border-t border-border pt-3">
             <div>
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total activity</p>
