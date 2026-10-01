@@ -127,8 +127,8 @@ export function useSaveRow<T extends Record<string, unknown>>(table: LedgerTable
     mutationFn: async ({ id, values }: { id?: string; values: T }) => {
       if (!scopeUserId) throw new Error("Not signed in");
       if (table === "transactions") {
-        const txnDate = typeof values.txn_date === "string" ? values.txn_date : "";
-        const createdAt = typeof values.created_at === "string" ? values.created_at : "";
+        const txnDate = typeof values["txn_date"] === "string" ? values["txn_date"] : "";
+        const createdAt = typeof values["created_at"] === "string" ? values["created_at"] : "";
         const createdDate = createdAt.slice(0, 10);
         const createdTime = createdAt.includes("T") ? createdAt.slice(11, 16) : "";
         if (isFutureDate(txnDate) || (createdAt && isFutureDateTime(createdDate, createdTime))) {
